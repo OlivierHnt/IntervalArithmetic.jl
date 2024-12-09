@@ -23,6 +23,8 @@ const RealIntervalType{T} = Union{BareInterval{T},Interval{T}}
 
 #
 
+import Printf
+
 include("display.jl")
     export setdisplay
 
