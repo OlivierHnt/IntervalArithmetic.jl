@@ -14,7 +14,7 @@ struct Domain{L, R, T, S}
     hi::S
 
     function Domain{L, R, T, S}(lo::T, hi::S) where {L, R, T, S}
-        (!(L in (:open, :closed)) || !(R in (:open, :closed))) && throw(ErrorException(
+        (!(L ∈ (:open, :closed)) || !(R ∈ (:open, :closed))) && throw(ErrorException(
             "Domain bound must be either :open or :closed, got $L and $R instead"
         ))
         return new{L, R, T, S}(lo, hi)
@@ -203,7 +203,7 @@ end
 function Piecewise(
         domains::NTuple{N, Domain},
         fs::NTuple{N, Any},
-        continuity::NTuple{M, Int} = ntuple(i -> -1, Vla(N-1))) where {N, M}
+        continuity::NTuple{M, Int} = ntuple(i -> -1, Val(N-1))) where {N, M}
 
     if length(domains) != length(fs)
         throw(ArgumentError("the number of domains and the number of functions don't match"))
@@ -214,7 +214,7 @@ function Piecewise(
         throw(ArgumentError("$(length(sub)) junction points but $(n - 1) are expected based on the number of domains ($n)"))
     end
 
-    for k in 1:length(domains) - 1
+    for k ∈ 1:length(domains) - 1
         s1 = domains[k]
         s2 = domains[k + 1]
 
@@ -239,7 +239,7 @@ domains(piecewise::Piecewise) = piecewise.domains
 pieces(piecewise::Piecewise) = zip(domains(piecewise), piecewise.fs)
 
 function discontinuities(piecewise::Piecewise, order = 0)
-    return [s for (s, C) in zip(piecewise.singularities, piecewise.continuity) if C .< order]
+    return [s for (s, C) ∈ zip(piecewise.singularities, piecewise.continuity) if C .< order]
 end
 
 function domain_string(domain::Domain{L, R}) where {L, R}
@@ -257,7 +257,7 @@ function Base.show(io::IO, ::MIME"text/plain", piecewise::Piecewise)
     n = length(pieces(piecewise))
     print(io, "Piecewise function with $n pieces:")
 
-    for (domain, f) in pieces(piecewise)
+    for (domain, f) ∈ pieces(piecewise)
         println(io)
         print(io, "  $(domain_string(domain)) -> $(repr(f))")
     end
@@ -269,7 +269,7 @@ function in_domain(domain, piecewise)
     # This relies on the fact that domains are ordered
     lo = lowerbound(domain)
 
-    for domain in domains(piecewise)
+    for domain ∈ domains(piecewise)
         if !rightof(lo, lowerbound(domain))
             return false
         end
@@ -303,7 +303,7 @@ function (piecewise::Piecewise)(X::Interval{T}) where {T}
     end
 
     piece_outputs = Interval{T}[]
-    for (piece_domain, f) in pieces(piecewise)
+    for (piece_domain, f) ∈ pieces(piecewise)
         piece_input = intersect_domain(input_domain, piece_domain)
         isempty_domain(piece_input) && continue
         push!(piece_outputs, f(interval(inf(piece_input), sup(piece_input), decoration(X))))
@@ -314,7 +314,7 @@ function (piecewise::Piecewise)(X::Interval{T}) where {T}
 end
 
 function (piecewise::Piecewise)(x::Real)
-    for (domain, f) in pieces(piecewise)
+    for (domain, f) ∈ pieces(piecewise)
         (in_domain(x, domain)) && return f(x)
     end
     throw(DomainError(x, "piecewise function was called outside of its domain $(domain_string(piecewise))"))
