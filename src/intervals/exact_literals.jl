@@ -197,16 +197,26 @@ for T ∈ (:Rational, :Integer)
         end
     end
 end
+Base.:/(x::ExactReal{<:Rational}, y::ExactReal{<:Rational}) = exact(x.value / y.value)
+Base.:/(x::ExactReal{<:Rational}, y::ExactReal{<:Integer}) = exact(x.value / y.value)
+Base.:/(x::ExactReal{<:Integer}, y::ExactReal{<:Rational}) = exact(x.value / y.value)
+function Base.:/(x::ExactReal{T}, y::ExactReal{S}) where {T<:Integer,S<:Integer}
+    r = x.value / y.value
+    (x.value == typemin(promote_type(T, S))) & (y.value == -1) && return r # check overflow
+    (y.value == typemin(promote_type(T, S))) & (x.value == -1) && return r # check overflow
+    x.value // y.value == r || return r
+    return exact(r)
+end
 
 #- needed to resolve method ambiguities (since `Bool <: Integer`)
-Base.:*(x::ExactReal{Bool}, y::ExactReal{Bool}) = exact(_exact_mul(x.value, y.value))
-Base.:/(x::ExactReal{Bool}, y::ExactReal{Bool}) = exact(_exact_div(x.value, y.value))
+Base.:*(x::ExactReal{Bool}, y::ExactReal{Bool}) = exact(x.value * y.value)
+Base.:/(x::ExactReal{Bool}, y::ExactReal{Bool}) = exact(x.value / y.value)
 for T ∈ (:Rational, :Integer)
     @eval begin
-        Base.:*(x::ExactReal{<:$T}, y::ExactReal{Bool}) = exact(_exact_mul(x.value, y.value))
-        Base.:*(x::ExactReal{Bool}, y::ExactReal{<:$T}) = exact(_exact_mul(x.value, y.value))
-        Base.:/(x::ExactReal{<:$T}, y::ExactReal{Bool}) = exact(_exact_div(x.value, y.value))
-        Base.:/(x::ExactReal{Bool}, y::ExactReal{<:$T}) = exact(_exact_div(x.value, y.value))
+        Base.:*(x::ExactReal{<:$T}, y::ExactReal{Bool}) = exact(x.value * y.value)
+        Base.:*(x::ExactReal{Bool}, y::ExactReal{<:$T}) = exact(x.value * y.value)
+        Base.:/(x::ExactReal{<:$T}, y::ExactReal{Bool}) = exact(x.value / y.value)
+        Base.:/(x::ExactReal{Bool}, y::ExactReal{<:$T}) = exact(x.value / y.value)
     end
 end
 #-
@@ -230,20 +240,6 @@ end
 Base.literal_pow(::typeof(^), x::ExactReal, ::Val{p}) where {p} =
     x ^ exact(p)
 Base.:^(x::ExactReal, p::Integer) = x.value ^ p # by-pass default integer power behaviour
-
-#
-
-Base.:/(x::ExactReal{<:Rational}, y::ExactReal{<:Rational}) = exact(x.value / y.value)
-Base.:/(x::ExactReal{<:Rational}, y::ExactReal{<:Integer}) = exact(x.value / y.value)
-Base.:/(x::ExactReal{<:Integer}, y::ExactReal{<:Rational}) = exact(x.value / y.value)
-
-function Base.:/(x::ExactReal{T}, y::ExactReal{S}) where {T<:Integer,S<:Integer}
-    r = x.value / y.value
-    (x.value == typemin(promote_type(T, S))) & (y.value == -1) && return r # check overflow
-    (y.value == typemin(promote_type(T, S))) & (x.value == -1) && return r # check overflow
-    x.value // y.value == r || return r
-    return exact(r)
-end
 
 # in general, exactness is lost
 
