@@ -380,7 +380,7 @@ function rootn(x::BareInterval{T}, n::Integer) where {T<:AbstractFloat}
     return @round(T, rootn(inf(x), n), rootn(sup(x), n))
 end
 
-rootn(x::BareInterval{<:Rational}) = rootn(float(x))
+rootn(x::BareInterval{<:Rational}, n::Integer) = rootn(float(x), n::Integer)
 
 function rootn(x::Interval{T}, n::Integer) where {T<:NumTypes}
     domain = _unsafe_bareinterval(T, ifelse(iseven(n), zero(T), typemin(T)), typemax(T))
