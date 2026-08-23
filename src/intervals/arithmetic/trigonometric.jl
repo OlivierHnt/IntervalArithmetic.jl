@@ -312,7 +312,7 @@ Base.tan(x::Complex{<:Interval}) = sin(x) / cos(x)
     cot(::BareInterval)
     cot(::Interval)
 
-Implement the `cot` function of the IEEE Standard 1788-2015 (Table 9.1).
+This function is not part of the IEEE Standard 1788-2015.
 """
 function Base.cot(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
@@ -346,7 +346,7 @@ Base.cot(x::BareInterval{<:Rational}) = cot(float(x))
     sec(::BareInterval)
     sec(::Interval)
 
-Implement the `sec` function of the IEEE Standard 1788-2015 (Table 9.1).
+This function is not part of the IEEE Standard 1788-2015.
 """
 function Base.sec(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
@@ -382,7 +382,7 @@ Base.sec(x::BareInterval{<:Rational}) = sec(float(x))
     csc(::BareInterval)
     csc(::Interval)
 
-Implement the `csc` function of the IEEE Standard 1788-2015 (Table 9.1).
+This function is not part of the IEEE Standard 1788-2015.
 """
 function Base.csc(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
@@ -501,11 +501,21 @@ Base.atan(x::Complex{Interval{T}}) where {T<:NumTypes} =
     acot(::BareInterval)
     acot(::Interval)
 
-Implement the `acot` function of the IEEE Standard 1788-2015 (Table 9.1).
+This function is not part of the IEEE Standard 1788-2015.
 """
 function Base.acot(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
-    return @round(T, acot(sup(x)), acot(inf(x)))
+    lo, hi = bounds(x)
+    HALF_PI_HI = sup(_half_pi(T))
+    if lo < 0 < hi || lo == hi == 0
+        return @round(T, -HALF_PI_HI, HALF_PI_HI)
+    elseif lo == 0
+        return @round(T, acot(hi), HALF_PI_HI)
+    elseif hi == 0
+        return @round(T, -HALF_PI_HI, acot(lo))
+    else
+        return @round(T, acot(hi), acot(lo))
+    end
 end
 
 Base.acot(x::BareInterval{<:Rational}) = acot(float(x))
