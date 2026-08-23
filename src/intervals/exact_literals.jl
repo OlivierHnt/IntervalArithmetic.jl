@@ -8,8 +8,6 @@ producing the "NG" flag.
 
 An `ExactReal` is constructed by wrapping the value with [`exact`](@ref).
 
-See also: [`@exact`](@ref).
-
 !!! danger
     By using `ExactReal`, users acknowledge the responsibility of ensuring that
     the number they input corresponds to their intended value.
@@ -27,6 +25,8 @@ See also: [`@exact`](@ref).
     In case of doubt, [`has_exact_display`](@ref) can be use to check if the
     string representation of a `Real` is equal to its binary value (up to 2000
     decimals).
+
+See also: [`exact`](@ref) and [`@exact`](@ref).
 
 # Examples
 
@@ -53,8 +53,6 @@ julia> [exact(1), interval(2)]
  [1.0, 1.0]_com
  [2.0, 2.0]_com
 ```
-
-See also: [`@exact`](@ref).
 """
 struct ExactReal{T<:Real} <: Real
     value :: T
@@ -62,6 +60,13 @@ struct ExactReal{T<:Real} <: Real
     global exact(value::T) where {T<:Real} = new{T}(value)
 end
 
+"""
+    exact(x)
+
+Wrap a number into an [`ExactReal`](@ref). If `x` is complex, then its real and imaginary parts are turned into an [`ExactReal`](@ref).
+
+See also: [`ExactReal`](@ref) and [`@exact`](@ref).
+"""
 exact(x::Complex) = complex(exact(real(x)), exact(imag(x)))
 
 exact(x::AbstractArray) = exact.(x)
@@ -343,6 +348,8 @@ macro allows defining generic functions, seamlessly accepting both `Number` and
     string representation of a `Real` is equal to its binary value (up to 2000
     decimals).
 
+See also: [`ExactReal`](@ref) and [`exact`](@ref).
+
 # Examples
 
 ```jldoctest
@@ -365,8 +372,6 @@ julia> g(interval(1, 2))
 julia> g(1.4)
 1.78
 ```
-
-See also: [`ExactReal`](@ref).
 """
 macro exact(expr)
     exact_expr = postwalk(expr) do x
