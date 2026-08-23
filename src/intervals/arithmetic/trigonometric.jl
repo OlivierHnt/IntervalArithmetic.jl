@@ -506,13 +506,13 @@ This function is not part of the IEEE Standard 1788-2015.
 function Base.acot(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
     lo, hi = bounds(x)
-    HALF_PI_HI = sup(_half_pi(T))
     if lo < 0 < hi || lo == hi == 0
-        return @round(T, -HALF_PI_HI, HALF_PI_HI)
+        HALF_PI_HI = sup(_half_pi(T))
+        return _unsafe_bareinterval(T, -HALF_PI_HI, HALF_PI_HI)
     elseif lo == 0
-        return @round(T, acot(hi), HALF_PI_HI)
+        return @round(T, acot(hi), +sup(_half_pi(T)))
     elseif hi == 0
-        return @round(T, -HALF_PI_HI, acot(lo))
+        return @round(T, -sup(_half_pi(T)), acot(lo))
     else
         return @round(T, acot(hi), acot(lo))
     end
