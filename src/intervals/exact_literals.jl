@@ -6,9 +6,9 @@ described by their binary form. The purpose is to guarantee that a non interval
 number is exact, so that `ExactReal` can be used with `Interval` without
 producing the "NG" flag.
 
-An `ExactReal` is constructed by wrapping the value with `exact`.
+An `ExactReal` is constructed by wrapping the value with [`exact`](@ref).
 
-See also: [`@exact`](@ref)
+See also: [`@exact`](@ref).
 
 !!! danger
     By using `ExactReal`, users acknowledge the responsibility of ensuring that
