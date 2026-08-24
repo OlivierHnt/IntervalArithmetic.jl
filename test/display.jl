@@ -225,9 +225,8 @@ setprecision(BigFloat, 256) do
             setdisplay(; sigdigits = 17)
             @test repr(interval(0.1, 0.3)) == "[0.1, 0.3]_com"
             setdisplay(; sigdigits = 6)
-            # the directed decimal rounding of the last digit depends on the architecture
-            @test repr(interval(1e100)) ∈ ("[1.0e+100, 1.0e+100]_com", "[1.0e+100, 1.00001e+100]_com")
-            @test repr(interval(1e-100)) ∈ ("[1.0e-100, 1.0e-100]_com", "[1.0e-100, 1.00001e-100]_com")
+            @test repr(interval(1e100)) == "[1.0e+100, 1.0e+100]_com"
+            @test repr(interval(1e-100)) == "[1.0e-100, 1.0e-100]_com"
         finally
             setdisplay(:infsup; decorations = true, ng_flag = true, sigdigits = 6)
         end
@@ -237,7 +236,7 @@ setprecision(BigFloat, 256) do
         try
             setdisplay(:infsup; sigdigits = 6, decorations = true, ng_flag = true)
             @test repr(interval(Float32, 0.1, 0.3)) == "[0.099999f0, 0.3f0]_com"
-            @test repr(interval(Float32, 1e30, 2e30)) == "[1.0f+30, 2.00001f+30]_com"
+            @test repr(interval(Float32, 1e30, 2e30)) == "[1.0f+30, 2.0f+30]_com"
             @test repr(entireinterval(Interval{Float32})) == "(-∞, ∞)_dac"
             @test repr(emptyinterval(Interval{Float32})) == "∅_trv"
             setdisplay(:full)
