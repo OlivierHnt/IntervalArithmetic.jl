@@ -324,7 +324,7 @@ setprecision(BigFloat, 256) do
             setdisplay(:infsup; sigdigits = 6, decorations = true, ng_flag = true)
             @test repr(a) == "[0.0, 2.0]_com + im*[1.0, 1.0]_com"
             @test repr(b) == "[0.0, 2.0]_com - im*[1.0, 1.0]_com"
-            @test repr(c) == "[0.0, 1.0e-70]_com - im*[9.9999e-71, 1.0e-70]_com"
+            @test repr(c) == "[0.0, 1.0e-70]_com - im*[1.0e-70, 1.0e-70]_com"
             @test repr(complex(interval(1, 2), interval(2, 3))) == "[1.0, 2.0]_com + im*[2.0, 3.0]_com"
             @test repr(complex(interval(1, 2), interval(-3, -2))) == "[1.0, 2.0]_com - im*[2.0, 3.0]_com"
             @test repr(complex(interval(1, 2), interval(-2, 0))) == "[1.0, 2.0]_com - im*[0.0, 2.0]_com"
@@ -335,7 +335,7 @@ setprecision(BigFloat, 256) do
             setdisplay(; decorations = false)
             @test repr(a) == "[0.0, 2.0] + im*[1.0, 1.0]"
             @test repr(b) == "[0.0, 2.0] - im*[1.0, 1.0]"
-            @test repr(c) == "[0.0, 1.0e-70] - im*[9.9999e-71, 1.0e-70]"
+            @test repr(c) == "[0.0, 1.0e-70] - im*[1.0e-70, 1.0e-70]"
 
             setdisplay(:full; sigdigits = 100, decorations = false)
             @test repr(a) == "Interval{Float64}(0.0, 2.0, com, true) + im*Interval{Float64}(1.0, 1.0, com, true)"
