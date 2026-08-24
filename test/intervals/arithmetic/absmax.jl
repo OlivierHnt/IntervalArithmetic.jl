@@ -25,7 +25,7 @@ using IntervalArithmetic
     for T ∈ (Float16, Float32, Float64, BigFloat)
         @test numtype(abs(bareinterval(T, -2, 1))) === T
     end
-    @test numtype(abs(bareinterval(-1//2, 3//2))) === Rational{Int64}
+    @test numtype(abs(bareinterval(-1//2, 3//2))) === Rational{Int}
     @test isequal_interval(abs(bareinterval(Rational{Int32}(-1//2), Rational{Int32}(3//2))), bareinterval(Rational{Int32}(0//1), Rational{Int32}(3//2)))
 end
 
@@ -106,7 +106,7 @@ end
     @test isequal_interval(max(x, x), x)
 
     @test isequal_interval(min(bareinterval(1//2, 3//2), bareinterval(1//3, 2//1)), bareinterval(1//3, 3//2))
-    @test numtype(min(bareinterval(1//2, 3//2), bareinterval(1//3, 2//1))) === Rational{Int64}
+    @test numtype(min(bareinterval(1//2, 3//2), bareinterval(1//3, 2//1))) === Rational{Int}
 
     e = emptyinterval(BareInterval{Float64})
     @test min(x, e) === e

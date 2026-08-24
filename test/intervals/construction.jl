@@ -150,7 +150,7 @@ end
 
     @test bareinterval(1) === bareinterval(1.0, 1.0)
     @test typeof(bareinterval(1)) == BareInterval{Float64}
-    @test typeof(bareinterval(1//2)) == BareInterval{Rational{Int64}}
+    @test typeof(bareinterval(1//2)) == BareInterval{Rational{Int}}
     @test typeof(bareinterval(Float32, 1)) == BareInterval{Float32}
     @test bounds(bareinterval(Float32, 0.1)) === (0.099999994f0, 0.1f0)
     @test bounds(bareinterval(Float16, 1, π)) === (Float16(1.0), Float16(3.143))
@@ -276,7 +276,7 @@ end
 
     @test !isguaranteed(Interval(1))
     @test !isguaranteed(Interval{Float64}(1))
-    @test typeof(Interval(1//2)) == Interval{Rational{Int64}}
+    @test typeof(Interval(1//2)) == Interval{Rational{Int}}
     @test_throws MethodError Interval(1, 2)
     @test_throws MethodError Interval{Float64}(1, 2)
     @test_throws MethodError interval(Float64, com)

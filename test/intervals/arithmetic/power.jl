@@ -149,7 +149,7 @@ end
 
     @test numtype(pow(bareinterval(2.0), bareinterval(1//2))) === Float64
     @test isequal_interval(pow(bareinterval(1//2, 1//1), bareinterval(2//1)), bareinterval(1//4, 1//1))
-    @test numtype(pow(bareinterval(1//2, 1//1), bareinterval(2//1))) === Rational{Int64}
+    @test numtype(pow(bareinterval(1//2, 1//1), bareinterval(2//1))) === Rational{Int}
 
     @test isequal_interval(pow(bareinterval(2.0), 3), bareinterval(8.0))
     @test isequal_interval(pow(bareinterval(4.0), 1//2), bareinterval(2.0))
@@ -295,7 +295,7 @@ end
 
     @test isequal_interval(pown(bareinterval(1//2), 2), bareinterval(1//4))
     @test isequal_interval(pown(bareinterval(1//2), -2), bareinterval(4//1))
-    @test numtype(pown(bareinterval(1//2), 2)) === Rational{Int64}
+    @test numtype(pown(bareinterval(1//2), 2)) === Rational{Int}
 
     @test decoration(pown(interval(-1, 1), 3)) == com
     r = pown(interval(-1, 1), -3)

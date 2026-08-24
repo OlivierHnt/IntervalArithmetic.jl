@@ -29,7 +29,7 @@ end
 @testset "Display" begin
     @test repr(exact(0.1)) == "ExactReal{Float64}(0.1000000000000000055511151231257827021181583404541015625)"
     @test repr("text/plain", exact(0.1)) == repr(exact(0.1))
-    @test repr(exact(1//2)) == "ExactReal{Rational{Int64}}(1//2)"
+    @test repr(exact(1//2)) == "ExactReal{Rational{$Int}}(1//2)"
     @test repr(exact(1)) == "ExactReal{Int64}(1)"
 
     @test has_exact_display(0.5)
@@ -65,7 +65,7 @@ end
 
     @test_throws ArgumentError promote_type(ExactReal{Float64}, ExactReal{Float32})
     @test promote_type(ExactReal{Int8}, ExactReal{Int16}) == ExactReal{Int16}
-    @test promote_type(ExactReal{Int}, ExactReal{Rational{Int}}) == ExactReal{Rational{Int64}}
+    @test promote_type(ExactReal{Int}, ExactReal{Rational{Int}}) == ExactReal{Rational{Int}}
 
     @test bounds(convert(BareInterval{Float64}, exact(0.1))) == (0.1, 0.1)
     x = convert(Interval{Float64}, exact(0.1))

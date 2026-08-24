@@ -33,7 +33,7 @@ end
     @test isequal_interval(bareinterval(1.0, Inf) + bareinterval(1.0, 2.0), bareinterval(2.0, Inf))
     @test typeof(bareinterval(1.0f0) + bareinterval(1.0)) === BareInterval{Float64}
     @test isequal_interval(bareinterval(1//2) + bareinterval(1//3), bareinterval(5//6))
-    @test numtype(bareinterval(1//2) + bareinterval(1//3)) === Rational{Int64}
+    @test numtype(bareinterval(1//2) + bareinterval(1//3)) === Rational{Int}
 
     setprecision(BigFloat, 128) do
         x = bareinterval(BigFloat, 1) / bareinterval(BigFloat, 3)
@@ -171,7 +171,7 @@ end
 
     @test isequal_interval(inv(bareinterval(1//2)), bareinterval(2//1))
     @test isentire_interval(inv(bareinterval(-1//2, 1//2)))
-    @test numtype(inv(bareinterval(-1//2, 1//2))) === Rational{Int64}
+    @test numtype(inv(bareinterval(-1//2, 1//2))) === Rational{Int}
 
     @test decoration(inv(interval(0.0, 1.0))) == trv
     @test decoration(inv(interval(-1.0, 1.0))) == trv

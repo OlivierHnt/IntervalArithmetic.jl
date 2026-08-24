@@ -276,7 +276,7 @@ setprecision(BigFloat, 256) do
             @test repr(interval(1//2, 3//4)) == "(5//8 ± 1//8)_com"
             @test repr(entireinterval(Interval{Rational{Int64}})) == "(0//1 ± ∞)_dac"
             setdisplay(:full)
-            @test repr(interval(1//2, 3//4)) == "Interval{Rational{Int64}}(1//2, 3//4, com, true)"
+            @test repr(interval(1//2, 3//4)) == "Interval{Rational{$Int}}(1//2, 3//4, com, true)"
             @test repr(entireinterval(Interval{Rational{Int64}})) == "Interval{Rational{Int64}}(-1//0, 1//0, dac, true)"
             setdisplay(:infsup; sigdigits = 1)
             @test repr(interval(1//2, 3//4)) == "[1//2, 3//4]_com"

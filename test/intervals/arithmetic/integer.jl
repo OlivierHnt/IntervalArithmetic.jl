@@ -10,7 +10,7 @@ using IntervalArithmetic
     @test isequal_interval(sign(entireinterval(BareInterval{Float64})), bareinterval(-1.0, 1.0))
 
     @test isequal_interval(sign(bareinterval(-1//2, 3//2)), bareinterval(-1//1, 1//1))
-    @test numtype(sign(bareinterval(-1//2, 3//2))) === Rational{Int64}
+    @test numtype(sign(bareinterval(-1//2, 3//2))) === Rational{Int}
 
     @test decoration(sign(interval(1.0, 3.0))) == com
     @test decoration(sign(interval(-2.0, 3.0))) == def
@@ -41,7 +41,7 @@ end
     end
 
     @test isequal_interval(ceil(bareinterval(-1//2, 3//2)), bareinterval(0//1, 2//1))
-    @test numtype(ceil(bareinterval(-1//2, 3//2))) === Rational{Int64}
+    @test numtype(ceil(bareinterval(-1//2, 3//2))) === Rational{Int}
     @test isequal_interval(floor(bareinterval(-1//2, 3//2)), bareinterval(-1//1, 1//1))
     @test isequal_interval(trunc(bareinterval(-1//2, 3//2)), bareinterval(0//1, 1//1))
 
@@ -90,7 +90,7 @@ end
     end
 
     @test isequal_interval(round(bareinterval(-1//2, 3//2)), bareinterval(0//1, 2//1))
-    @test numtype(round(bareinterval(-1//2, 3//2))) === Rational{Int64}
+    @test numtype(round(bareinterval(-1//2, 3//2))) === Rational{Int}
 
     @test decoration(round(interval(0.5, 0.7))) == def
     @test decoration(round(interval(-1.5, 2.5))) == def
