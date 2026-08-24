@@ -225,8 +225,9 @@ setprecision(BigFloat, 256) do
             setdisplay(; sigdigits = 17)
             @test repr(interval(0.1, 0.3)) == "[0.1, 0.3]_com"
             setdisplay(; sigdigits = 6)
-            @test repr(interval(1e100)) == "[1.0e+100, 1.0e+100]_com"
-            @test repr(interval(1e-100)) == "[1.0e-100, 1.0e-100]_com"
+            # the directed decimal rounding of the last digit depends on the architecture
+            @test repr(interval(1e100)) ∈ ("[1.0e+100, 1.0e+100]_com", "[1.0e+100, 1.00001e+100]_com")
+            @test repr(interval(1e-100)) ∈ ("[1.0e-100, 1.0e-100]_com", "[1.0e-100, 1.00001e-100]_com")
         finally
             setdisplay(:infsup; decorations = true, ng_flag = true, sigdigits = 6)
         end

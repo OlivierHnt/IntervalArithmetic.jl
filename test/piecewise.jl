@@ -5,10 +5,10 @@ using IntervalArithmetic: lowerbound, upperbound, rightof, leftof, in_domain,
 
 @testset "Domain construction" begin
     d = Domain{:closed,:open}(0, 1)
-    @test d isa Domain{:closed,:open,Int64,Int64}
+    @test d isa Domain{:closed,:open,Int,Int}
     @test d.lo == 0 && d.hi == 1
 
-    @test Domain{:open,:closed}(-Inf, 0) isa Domain{:open,:closed,Float64,Int64}
+    @test Domain{:open,:closed}(-Inf, 0) isa Domain{:open,:closed,Float64,Int}
 
     @test Domain((0, :closed), (1, :open)) == Domain{:closed,:open}(0, 1)
 

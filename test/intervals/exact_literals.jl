@@ -17,9 +17,9 @@ using IntervalArithmetic
     @test ExactReal{Float64}(exact(0.5)) === exact(0.5)
 
     c = exact(complex(1, 2))
-    @test c isa Complex{ExactReal{Int64}}
+    @test c isa Complex{ExactReal{Int}}
     @test (real(c) === exact(1)) & (imag(c) === exact(2))
-    @test exact([1, 2]) isa Vector{ExactReal{Int64}}
+    @test exact([1, 2]) isa Vector{ExactReal{Int}}
     @test exact([1, 2]) == [exact(1), exact(2)]
 
     @test isguaranteed(exact(1))
@@ -30,7 +30,7 @@ end
     @test repr(exact(0.1)) == "ExactReal{Float64}(0.1000000000000000055511151231257827021181583404541015625)"
     @test repr("text/plain", exact(0.1)) == repr(exact(0.1))
     @test repr(exact(1//2)) == "ExactReal{Rational{$Int}}(1//2)"
-    @test repr(exact(1)) == "ExactReal{Int64}(1)"
+    @test repr(exact(1)) == "ExactReal{$Int}(1)"
 
     @test has_exact_display(0.5)
     @test !has_exact_display(0.1)
@@ -87,8 +87,8 @@ end
 
     @test promote_type(ExactReal{Float64}, Float32) == Float64
     @test promote_type(Float32, ExactReal{Float64}) == Float64
-    @test promote_type(ExactReal{Int}, Bool) == Int64
-    @test promote_type(Bool, ExactReal{Int}) == Int64
+    @test promote_type(ExactReal{Int}, Bool) == Int
+    @test promote_type(Bool, ExactReal{Int}) == Int
     @test promote_type(ExactReal{Int}, BigFloat) == BigFloat
     @test promote_type(BigFloat, ExactReal{Int}) == BigFloat
     @test promote_type(ExactReal{Int}, Irrational{:π}) == Float64
