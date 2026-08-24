@@ -1,7 +1,7 @@
 using Test
 using IntervalArithmetic
 using ForwardDiff
-using ForwardDiff: Dual, Partials, Tag, value, partials, npartials, ≺
+using ForwardDiff: Dual, Partials, Tag, value, partials, npartials
 
 @testset "Dual and ExactReal" begin
     @test ForwardDiff.can_dual(ExactReal)
@@ -77,7 +77,7 @@ end
 @testset "Power with different tags" begin
     TA = typeof(Tag(x -> x, Interval{Float64}))
     TB = typeof(Tag(x -> 2x, Interval{Float64}))
-    @test (TA ≺ TB) & !(TB ≺ TA)
+    @test ForwardDiff.:≺(TA, TB) & !ForwardDiff.:≺(TB, TA)
     x = Dual{TA}(interval(2.0), interval(1.0))
     y = Dual{TB}(interval(3.0), interval(1.0))
     z = x^y

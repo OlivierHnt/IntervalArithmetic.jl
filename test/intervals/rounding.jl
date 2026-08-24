@@ -135,16 +135,19 @@ end
 end
 
 @testset "one-argument functions, ulp mode" begin
-    working = ((cbrt, 0.5), (exp, 0.5), (exp2, 0.5), (exp10, 0.5), (expm1, 0.5), (log, 0.5),
-               (log2, 0.5), (log10, 0.5), (log1p, 0.5), (sin, 0.5), (sinpi, 0.5), (cos, 0.5),
-               (cospi, 0.5), (tan, 0.5), (asin, 0.5), (acos, 0.5), (atan, 0.5), (sinh, 0.5),
-               (tanh, 0.5), (asinh, 0.5), (cosh, 0.5), (acosh, 2.0), (atanh, 0.5))
-    for (f, x) ∈ working, T ∈ (Float32, Float64)
-        down = _fround(f, IntervalRounding{:ulp}(), T(x), RoundDown)
-        up = _fround(f, IntervalRounding{:ulp}(), T(x), RoundUp)
-        @test typeof(down) == typeof(up) == T
-        @test down < up
-        @test down ≤ f(big(T(x))) ≤ up
+    # CoreMath ships no library for 32-bit systems
+    if isdefined(CoreMath, :libcoremath)
+        working = ((cbrt, 0.5), (exp, 0.5), (exp2, 0.5), (exp10, 0.5), (expm1, 0.5), (log, 0.5),
+                   (log2, 0.5), (log10, 0.5), (log1p, 0.5), (sin, 0.5), (sinpi, 0.5), (cos, 0.5),
+                   (cospi, 0.5), (tan, 0.5), (asin, 0.5), (acos, 0.5), (atan, 0.5), (sinh, 0.5),
+                   (tanh, 0.5), (asinh, 0.5), (cosh, 0.5), (acosh, 2.0), (atanh, 0.5))
+        for (f, x) ∈ working, T ∈ (Float32, Float64)
+            down = _fround(f, IntervalRounding{:ulp}(), T(x), RoundDown)
+            up = _fround(f, IntervalRounding{:ulp}(), T(x), RoundUp)
+            @test typeof(down) == typeof(up) == T
+            @test down < up
+            @test down ≤ f(big(T(x))) ≤ up
+        end
     end
     # no CoreMath routine: `:ulp` falls back to `:correct`, cf. src/intervals/rounding.jl
     for (f, x) ∈ ((cot, 0.5), (sec, 0.5), (csc, 0.5), (acot, 1.0), (coth, 0.5), (sech, 0.5),
@@ -167,11 +170,14 @@ end
     @test _fround(^, 2.0, 3, RoundDown) == _fround(^, 2.0, 3.0, RoundDown)
     @test _fround(atan, 1.0, 2.0, RoundDown) < atan(big(1.0), big(2.0)) < _fround(atan, 1.0, 2.0, RoundUp)
     @test _fround(atan, 1.0, 2.0, RoundDown) isa BigFloat
-    for T ∈ (Float32, Float64)
-        @test _fround(^, IntervalRounding{:ulp}(), T(2), T(0.5), RoundDown) === prevfloat(CoreMath.cr_pow(T(2), T(0.5)))
-        @test _fround(^, IntervalRounding{:ulp}(), T(2), T(0.5), RoundUp) === nextfloat(CoreMath.cr_pow(T(2), T(0.5)))
-        @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundDown) === prevfloat(CoreMath.cr_atan2(T(1), T(2)))
-        @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundUp) === nextfloat(CoreMath.cr_atan2(T(1), T(2)))
+    # CoreMath ships no library for 32-bit systems
+    if isdefined(CoreMath, :libcoremath)
+        for T ∈ (Float32, Float64)
+            @test _fround(^, IntervalRounding{:ulp}(), T(2), T(0.5), RoundDown) === prevfloat(CoreMath.cr_pow(T(2), T(0.5)))
+            @test _fround(^, IntervalRounding{:ulp}(), T(2), T(0.5), RoundUp) === nextfloat(CoreMath.cr_pow(T(2), T(0.5)))
+            @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundDown) === prevfloat(CoreMath.cr_atan2(T(1), T(2)))
+            @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundUp) === nextfloat(CoreMath.cr_atan2(T(1), T(2)))
+        end
     end
 end
 
