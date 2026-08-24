@@ -83,10 +83,11 @@ functions = Dict(
     "isMember" => x -> "in_interval($x)",
     "cancelPlus" => x -> "cancelplus($x)",
     "cancelMinus" => x -> "cancelminus($x)",
-    "sum_nearest" => x -> "sum($x)",
-    "dot_nearest" => x -> "sum(.*($x))",
-    "sum_abs_nearest" => x -> "sum(abs.($x))",
-    "sum_sqr_nearest" => x -> "sum($x.^2)"
+    # IEEE 1788-2015 requires correctly rounded reductions: accumulate in BigFloat, round once
+    "sum_nearest" => x -> "Float64(sum(big.($x)))",
+    "dot_nearest" => x -> "Float64(sum(widemul.($x)))",
+    "sum_abs_nearest" => x -> "Float64(sum(abs.(big.($x))))",
+    "sum_sqr_nearest" => x -> "Float64(sum(big.($x).^2))"
 )
 
 """
@@ -159,17 +160,6 @@ function parse_command(line)
 
     expr = build_expression(lhs, rhs)
     command = "@test $expr"
-
-    if occursin("dot_nearest {0x10000000000001p0, 0x1p104} {0x0fffffffffffffp0, -1.0} = -1.0", line)
-        # broken test unrelated to interval airthmetic
-        command = "@test_broken $expr"
-    elseif occursin("atan2 [-0.0, 1.0]_com [-2.0, -0.1]_com = [0X1.ABA397C7259DDP+0, 0X1.921FB54442D19P+1]_dac", line)
-        # erroneous test: the decoration of the result should be `com`
-        command =
-            """
-            @warn "The original test `atan2 [-0.0, 1.0]_com [-2.0, -0.1]_com = [0X1.ABA397C7259DDP+0, 0X1.921FB54442D19P+1]_dac` is wrong and has been modified. The result should have the decoration `com`"
-                @test atan(interval(bareinterval(-0.0, 1.0), com), interval(bareinterval(-2.0, -0.1), com)) === interval(bareinterval(0x1.ABA397C7259DDP+0, 0x1.921FB54442D19P+1), com)"""
-    end
 
     command = haswarning ? "@test_logs (:warn,) $command" : command
 

@@ -1,45 +1,39 @@
 using Test
 
-using ForwardDiff
 using IntervalArithmetic
-using InteractiveUtils
-import Arblib
-import IntervalSets as IS
 
-include("generate_ITF1788.jl")
-
-# interval tests
-for f ∈ filter(isfile, readdir("interval_tests"; join = true))
+# mirrors the organization of src/ and ext/
+repo_tests = String[]
+for entry ∈ ("IntervalArithmetic.jl", "intervals", "piecewise.jl", "display.jl", "symbols.jl", "ext")
+    if isdir(entry)
+        for (root, _, files) ∈ walkdir(entry), f ∈ files
+            push!(repo_tests, joinpath(root, f))
+        end
+    else
+        push!(repo_tests, entry)
+    end
+end
+for f ∈ repo_tests
     @testset "$f" begin
         include(f)
     end
 end
 
-# interval tests using Supposition
-# We use Pkg.add to add a specific version of Supposition
 using Pkg
 Pkg.add(url = "https://github.com/Seelengrab/Supposition.jl.git", rev = "feat/support_x86")
-using Supposition, Supposition.Data
-
-for f ∈ filter(isfile, readdir("interval_tests/supposition"; join = true))
+for f ∈ filter(isfile, readdir("supposition"; join = true))
     @testset "$f" begin
         include(f)
     end
 end
 Pkg.rm("Supposition")
 
-# ITF1788 tests
-# these tests were generated using:
-# for f ∈ readdir("itl")
-#     if !occursin("LICENSE", f)
-#         generate(f)
-#     end
-# end
+# generated via `generate(f)` for each non-LICENSE file f of itl/
+include("generate_ITF1788.jl")
 for f ∈ readdir("ITF1788_tests"; join = true)
     @testset "$f" begin
         include(f)
     end
 end
 
-# Aqua tests
 include("aqua.jl")
