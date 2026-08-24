@@ -501,18 +501,20 @@ Base.atan(x::Complex{Interval{T}}) where {T<:NumTypes} =
     acot(::BareInterval)
     acot(::Interval)
 
-This function is not part of the IEEE Standard 1788-2015.
+This function is not part of the IEEE Standard 1788-2015. It uses the convention
+`acot(0) = π/2` and the jump at 0 is decorated like the branch cut of the
+two-argument `atan` described as `atan2` in the IEEE Standard 1788-2015
+(Table 9.1).
 """
 function Base.acot(x::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) && return x
     lo, hi = bounds(x)
-    if lo < 0 < hi || lo == hi == 0
+    if lo < 0 && hi ≥ 0
         HALF_PI_HI = sup(_half_pi(T))
         return _unsafe_bareinterval(T, -HALF_PI_HI, HALF_PI_HI)
     elseif lo == 0
+        hi == 0 && return _half_pi(T)
         return @round(T, acot(hi), +sup(_half_pi(T)))
-    elseif hi == 0
-        return @round(T, -sup(_half_pi(T)), acot(lo))
     else
         return @round(T, acot(hi), acot(lo))
     end
@@ -520,7 +522,13 @@ end
 
 Base.acot(x::BareInterval{<:Rational}) = acot(float(x))
 
-# automatically defined for `Interval` since it is a subtype of `Real`
+function Base.acot(x::Interval)
+    bx = bareinterval(x)
+    r = acot(bx)
+    d = min(decoration(x), decoration(r))
+    d = min(d, ifelse(in_interval(0, bx), ifelse(inf(bx) < 0, def, dac), d))
+    return _unsafe_interval(r, d, isguaranteed(x))
+end
 
 """
     atan(::BareInterval, ::BareInterval)
