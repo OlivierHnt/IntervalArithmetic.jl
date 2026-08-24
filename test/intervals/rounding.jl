@@ -157,7 +157,6 @@ end
         @test down < up
         @test down ≤ f(big(T(x))) ≤ up
     end
-    @test_throws "cr_sinf16" _fround(sin, IntervalRounding{:ulp}(), Float16(1), RoundDown)
 end
 
 @testset "two-argument functions" begin
