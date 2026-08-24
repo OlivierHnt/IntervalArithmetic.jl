@@ -272,7 +272,7 @@ function sample(rng::Random.AbstractRNG, x::Interval{T}) where {T<:NumTypes}
     β = rand(rng, float(T))
     lo = ifelse(lo == typemin(T), _value_min(T), lo)
     hi = ifelse(hi == typemax(T), _value_max(T), hi)
-    val = convert(T, (1 - β) * lo + β * hi)
+    val = _value_round(T, (1 - β) * lo + β * hi)
     val = ifelse(val < lo, lo, val)
     val = ifelse(val > hi, hi, val)
     return val
@@ -283,6 +283,10 @@ _value_max(::Type{T}) where {T<:AbstractFloat} = floatmax(T)
 
 _value_min(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemin(T))
 _value_max(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemax(T))
+
+_value_round(::Type{T}, val) where {T<:AbstractFloat} = convert(T, val)
+# the exact fraction of a float may overflow the integer type
+_value_round(::Type{Rational{T}}, val) where {T<:Integer} = rationalize(T, val)
 
     export sample
 
