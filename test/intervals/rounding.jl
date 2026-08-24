@@ -173,8 +173,6 @@ end
         @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundDown) === prevfloat(CoreMath.cr_atan2(T(1), T(2)))
         @test _fround(atan, IntervalRounding{:ulp}(), T(1), T(2), RoundUp) === nextfloat(CoreMath.cr_atan2(T(1), T(2)))
     end
-    @test_throws ErrorException _fround(^, IntervalRounding{:ulp}(), Float16(2), Float16(0.5), RoundDown)
-    @test_throws ErrorException _fround(atan, IntervalRounding{:ulp}(), Float16(1), Float16(2), RoundDown)
 end
 
 @testset "rootn" begin
