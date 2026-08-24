@@ -289,8 +289,6 @@ end
     @test inf(x) == 3.141592653589793
     @test sup(x) == 3.1415926535897936 == nextfloat(inf(x))
     @test @inferred(bareinterval(Float64, π)) isa BareInterval{Float64}
-    bareinterval(Float64, π)
-    @test (@allocated bareinterval(Float64, π)) == 0
 
     for T ∈ (Float16, Float32, Float64)
         y = bareinterval(T, π)

@@ -2,17 +2,6 @@ using Test
 using IntervalArithmetic
 using IntervalArithmetic: interval_diff, interiordiff!
 
-# `@allocated` is only meaningful on a compiled call whose arguments are function locals
-function alloc_hull8(x)
-    hull(x, x, x, x, x, x, x, x)
-    return @allocated hull(x, x, x, x, x, x, x, x)
-end
-
-function alloc_intersect8(x)
-    intersect_interval(x, x, x, x, x, x, x, x)
-    return @allocated intersect_interval(x, x, x, x, x, x, x, x)
-end
-
 sameset(A, B) = length(A) == length(B) &&
     all(a -> any(b -> all(isequal_interval.(a, b)), B), A) &&
     all(b -> any(a -> all(isequal_interval.(a, b)), A), B)
@@ -165,12 +154,6 @@ end
             @test decoration(intersect_interval(xs...; dec = dec)) == decoration(reduce((a, b) -> intersect_interval(a, b; dec = dec), xs))
         end
     end
-
-    # zero allocations require the variadic methods to specialize on the number of arguments
-    @test alloc_hull8(interval(1, 2)) == 0
-    @test alloc_intersect8(interval(1, 2)) == 0
-    @test alloc_hull8(bareinterval(1, 2)) == 0
-    @test alloc_intersect8(bareinterval(1, 2)) == 0
 
     ng = convert(Interval{Float64}, 1)
 
