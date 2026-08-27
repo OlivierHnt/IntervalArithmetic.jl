@@ -26,8 +26,7 @@ for f ∈ filter(isfile, readdir("supposition"; join = true))
 end
 Pkg.rm("Supposition")
 
-# generated via `generate(f)` for each file f of itl/, except the LICENSE and the
-# reduction operations which do not pertain to interval arithmetic
+# generated via `generate(f)` for each file f of itl/ (except LICENSE.md)
 include("generate_ITF1788.jl")
 for f ∈ readdir("ITF1788_tests"; join = true)
     @testset "$f" begin
