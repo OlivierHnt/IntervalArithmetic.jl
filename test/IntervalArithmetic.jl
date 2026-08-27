@@ -254,11 +254,6 @@ end
     @test isnan(sample(emptyinterval()))
     @test isnan(sample(nai()))
 
-    s = sample(interval(1//2, 3//4))
-    @test s isa Rational{Int} && 1//2 ≤ s ≤ 3//4
-    s = sample(interval(Int16(1)//Int16(2), Int16(3)//Int16(4)))
-    @test s isa Rational{Int16} && 1//2 ≤ s ≤ 3//4
-
     s = sample(interval(BigFloat, 1, 2))
     @test s isa BigFloat && 1 ≤ s ≤ 2
 
@@ -275,9 +270,7 @@ end
         @test IntervalArithmetic._value_min(T) == floatmin(T)
         @test IntervalArithmetic._value_max(T) == floatmax(T)
     end
-    @test IntervalArithmetic._value_min(Rational{Int8}) == -128//1
-    @test IntervalArithmetic._value_max(Rational{Int8}) == 127//1
-    @test IntervalArithmetic._value_min(Rational{Int}) == typemin(Int)//1
+    @test_throws MethodError sample(interval(1//2, 3//4))
 end
 
 @testset "Irrational bareinterval" begin
