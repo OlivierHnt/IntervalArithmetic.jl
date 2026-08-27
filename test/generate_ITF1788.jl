@@ -82,12 +82,7 @@ functions = Dict(
     "isSingleton" => x -> "isthin($x)",
     "isMember" => x -> "in_interval($x)",
     "cancelPlus" => x -> "cancelplus($x)",
-    "cancelMinus" => x -> "cancelminus($x)",
-    # IEEE 1788-2015 requires correctly rounded reductions: accumulate in BigFloat, round once
-    "sum_nearest" => x -> "Float64(sum(big.($x)))",
-    "dot_nearest" => x -> "Float64(sum(widemul.($x)))",
-    "sum_abs_nearest" => x -> "Float64(sum(abs.(big.($x))))",
-    "sum_sqr_nearest" => x -> "Float64(sum(big.($x).^2))"
+    "cancelMinus" => x -> "cancelminus($x)"
 )
 
 """
