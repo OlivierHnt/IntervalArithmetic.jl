@@ -3,17 +3,15 @@ using Test
 using IntervalArithmetic
 
 # mirrors the organization of src/ and ext/
+not_repo_tests = ("runtests.jl", "aqua.jl", "generate_ITF1788.jl", "ITF1788_tests", "itl", "supposition")
 repo_tests = String[]
-for entry ∈ ("IntervalArithmetic.jl", "intervals", "piecewise.jl", "display.jl", "symbols.jl", "ext")
-    if isdir(entry)
-        for (root, _, files) ∈ walkdir(entry), f ∈ files
-            push!(repo_tests, joinpath(root, f))
-        end
-    else
-        push!(repo_tests, entry)
+for (root, dirs, files) ∈ walkdir(@__DIR__)
+    filter!(∉(not_repo_tests), dirs)
+    for f ∈ files
+        endswith(f, ".jl") && f ∉ not_repo_tests && push!(repo_tests, relpath(joinpath(root, f), @__DIR__))
     end
 end
-for f ∈ repo_tests
+for f ∈ sort!(repo_tests)
     @testset "$f" begin
         include(f)
     end
@@ -28,7 +26,8 @@ for f ∈ filter(isfile, readdir("supposition"; join = true))
 end
 Pkg.rm("Supposition")
 
-# generated via `generate(f)` for each non-LICENSE file f of itl/
+# generated via `generate(f)` for each file f of itl/, except the LICENSE and the
+# reduction operations which do not pertain to interval arithmetic
 include("generate_ITF1788.jl")
 for f ∈ readdir("ITF1788_tests"; join = true)
     @testset "$f" begin
