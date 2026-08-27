@@ -103,7 +103,7 @@ end
     @test c(3) === 1.2
     @test_throws MethodError c("some string")
 
-    @test !isguaranteed(c(convert(Interval{Float64}, 1)))
+    @test isguaranteed(c(convert(Interval{Float64}, 1)))
 
     x = c(interval(0, 1.3))
     @test x isa Interval{Float64}
@@ -201,6 +201,12 @@ end
     @test !in_domain(Domain(interval(0.2, 2.5)), p)
     @test !in_domain(Domain(interval(0, 3)), pgap)
     @test !in_domain(Domain(interval(0.5, 2.5)), pgap)
+
+    ppoint = Piecewise(Domain{:open,:open}(-1, 0) => identity, Domain{:open,:open}(0, 1) => identity)
+    @test in_domain(Domain(interval(-0.5, -0.2)), ppoint)
+    @test !in_domain(Domain(interval(-0.5, 0.5)), ppoint)
+    @test decoration(ppoint(interval(-0.5, 0.5))) === trv
+    @test_throws DomainError ppoint(0)
 end
 
 @testset "Interval evaluation" begin
@@ -230,7 +236,8 @@ end
     @test x isa Interval{Float32}
     @test isequal_interval(x, interval(Float32, 1, 1)) && decoration(x) === com && isguaranteed(x)
 
-    @test !isguaranteed(p(convert(Interval{Float64}, 0.5)))
+    @test isguaranteed(p(convert(Interval{Float64}, 0.5)))
+    @test !isguaranteed(p(convert(Interval{Float64}, 1.5)))
     @test !isguaranteed(p(convert(Interval{Float64}, 5)))
 
     trvpiece = Piecewise(

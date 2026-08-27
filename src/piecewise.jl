@@ -30,7 +30,19 @@ sup(d::Domain) = d.hi
 
 rightof(x::Real, (val, bound)::Tuple) = ifelse(bound === :closed, val ≤ x, val < x)
 
+# for two lower bounds: at equal values an open bound is positioned after a closed one
+function rightof((val1, bound1)::Tuple, (val2, bound2)::Tuple)
+    val1 == val2 && return bound1 === :open && bound2 === :closed
+    return val1 > val2
+end
+
 leftof(x::Real, (val, bound)::Tuple) = ifelse(bound === :closed, x ≤ val, x < val)
+
+# for two upper bounds: at equal values an open bound is positioned before a closed one
+function leftof((val1, bound1)::Tuple, (val2, bound2)::Tuple)
+    val1 == val2 && return bound1 === :open && bound2 === :closed
+    return val1 < val2
+end
 
 function leftof(d1::Domain, d2::Domain)
     val1, bound1 = upperbound(d1)
@@ -39,7 +51,7 @@ function leftof(d1::Domain, d2::Domain)
     return val1 < val2
 end
 
-in_domain(x::Real, d::Domain) = rightof(x, lowerbound(d)) && leftof(x, upperbound(d))
+in_domain(x::Real, domain::Domain) = rightof(x, lowerbound(domain)) && leftof(x, upperbound(domain))
 
 function isempty_domain(d::Domain{L,R}) where {L,R}
     d.lo == d.hi && return !(L === R === :closed)
@@ -47,22 +59,17 @@ function isempty_domain(d::Domain{L,R}) where {L,R}
 end
 
 function intersect_domain(d1::Domain, d2::Domain)
-    lo, L = _innermost(lowerbound(d1), lowerbound(d2), >)
-    hi, R = _innermost(upperbound(d1), upperbound(d2), <)
+    lo, L = ifelse(rightof(lowerbound(d1), lowerbound(d2)), lowerbound(d1), lowerbound(d2))
+    hi, R = ifelse(leftof(upperbound(d1), upperbound(d2)), upperbound(d1), upperbound(d2))
     d = Domain{L,R}(lo, hi)
     return isempty_domain(d) ? Domain() : d
-end
-# tightest of two like bounds; at equal values an open bound excludes the endpoint
-function _innermost((val1, bound1)::Tuple, (val2, bound2)::Tuple, isinner)
-    val1 == val2 && return (val1, ifelse(bound1 === bound2, bound1, :open))
-    return isinner(val1, val2) ? (val1, bound1) : (val2, bound2)
 end
 
 """
     Constant(value)
 
-Constant function compatible with interval arithmetic: it returns an interval
-enclosing `value` for an interval input, and `value` itself otherwise. In
+Constant function compatible with interval arithmetic: it wraps `value` into
+an interval for an interval input, and returns `value` itself otherwise. In
 contrast, `Returns(value)` from Base outputs `value` even for an interval
 input, which shortcircuits the propagation of intervals and loses the
 associated guarantee of correctness.
@@ -86,10 +93,7 @@ struct Constant{T}
     value :: T
 end
 
-function (constant::Constant)(x::Interval)
-    y = interval(constant.value)
-    return _unsafe_interval(bareinterval(y), decoration(y), isguaranteed(x))
-end
+(constant::Constant)(::Interval) = interval(constant.value)
 
 (constant::Constant)(::Real) = constant.value
 
@@ -211,15 +215,15 @@ end
 
 # whether `domain` is contained in the union of the (ordered) domains of `piecewise`
 function in_domain(domain, piecewise)
-    v, b = lowerbound(domain)
-    hv, hb = upperbound(domain)
+    loval, lobound = lowerbound(domain)
+    hival, hibound = upperbound(domain)
     for piece ∈ domains(piecewise)
-        pv, pb = upperbound(piece)
-        (pv < v || (pv == v && !(b === pb === :closed))) && continue
-        plv, plb = lowerbound(piece)
-        (plv < v || (plv == v && (plb === :closed || b === :open))) || return false
-        (hv < pv || (hv == pv && (pb === :closed || hb === :open))) && return true
-        v, b = pv, ifelse(pb === :closed, :open, :closed)
+        supval, supbound = upperbound(piece)
+        (supval < loval || (supval == loval && !(lobound === supbound === :closed))) && continue
+        infval, infbound = lowerbound(piece)
+        (infval < loval || (infval == loval && (infbound === :closed || lobound === :open))) || return false
+        (hival < supval || (hival == supval && (supbound === :closed || hibound === :open))) && return true
+        loval, lobound = supval, ifelse(supbound === :closed, :open, :closed)
     end
     return false
 end
