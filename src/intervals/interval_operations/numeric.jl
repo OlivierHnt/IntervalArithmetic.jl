@@ -215,7 +215,7 @@ See also: [`inf`](@ref), [`sup`](@ref), [`bounds`](@ref), [`mid`](@ref),
 """
 function midradius(x::BareInterval)
     m = mid(x)
-    return m, max(m - inf(x), sup(x) - m)
+    return m, max(_fround(-, m, inf(x), RoundUp), _fround(-, sup(x), m, RoundUp)) # cf. Section 12.12.8
 end
 function midradius(x::BareInterval{<:Rational}) # needed to avoid integer overflow error
     m = mid(x)
