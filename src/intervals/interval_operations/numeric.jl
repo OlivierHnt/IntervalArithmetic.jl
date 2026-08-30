@@ -263,7 +263,11 @@ function mag(x::Interval{<:Rational})
 end
 
 mag(x::Real) = mag(interval(x))
-mag(x::Complex) = sup(abs(interval(x)))
+function mag(x::Complex)
+    z = interval(x)
+    isempty_interval(z) && return mag(emptyinterval(real(z)))
+    return sup(abs(z))
+end
 
 """
     mig(x)
@@ -295,7 +299,11 @@ function mig(x::Interval{<:Rational})
 end
 
 mig(x::Real) = mig(interval(x))
-mig(x::Complex) = inf(abs(interval(x)))
+function mig(x::Complex)
+    z = interval(x)
+    isempty_interval(z) && return mig(emptyinterval(real(z)))
+    return inf(abs(z))
+end
 
 """
     dist(x, y)
