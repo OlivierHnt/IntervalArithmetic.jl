@@ -300,15 +300,17 @@ mig(x::Complex) = inf(abs(interval(x)))
 """
     dist(x, y)
 
-Distance between `x` and `y`.
+Upper bound of the Hausdorff distance between `x` and `y`: the bound
+differences are rounded upward, and equal bounds, including infinite ones, are
+at distance zero.
 """
 function dist(x::BareInterval{T}, y::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) | isempty_interval(y) && return convert(T, NaN)
-    return max(abs(inf(x) - inf(y)), abs(sup(x) - sup(y)))
+    return max(_dist(inf(x), inf(y)), _dist(sup(x), sup(y)))
 end
 function dist(x::BareInterval{T}, y::BareInterval{T}) where {T<:Rational}
     isempty_interval(x) | isempty_interval(y) && return throw(ArgumentError("cannot compute the distance of empty intervals; cannot return a `Rational` NaN"))
-    return max(abs(inf(x) - inf(y)), abs(sup(x) - sup(y)))
+    return max(_dist(inf(x), inf(y)), _dist(sup(x), sup(y)))
 end
 dist(x::BareInterval, y::BareInterval) = dist(promote(x, y)...)
 
@@ -321,3 +323,11 @@ function dist(x::Interval{T}, y::Interval{T}) where {T<:Rational}
     return dist(bareinterval(x), bareinterval(y))
 end
 dist(x::Interval, y::Interval) = dist(promote(x, y)...)
+
+# used internally, upper bound of `abs(a - b)` with equal, possibly infinite,
+# bounds at distance zero
+function _dist(a::T, b::T) where {T<:NumTypes}
+    a == b && return zero(T)
+    isinf(a) & isinf(b) && return typemax(T) # opposite infinities
+    return _fround(-, max(a, b), min(a, b), RoundUp)
+end
