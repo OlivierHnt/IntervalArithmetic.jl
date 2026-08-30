@@ -257,15 +257,20 @@ end
 #
 
 function interval_diff(x::Interval{T}, y::Interval) where {T<:NumTypes}
-    isdisjoint_interval(x, y) && return [x]
+    d = min(decoration(x), decoration(y))
+    d == ill && return [nai(T)] # one of the inputs is an NaI
+    t = isguaranteed(x) & isguaranteed(y)
+    # the pieces are decorated `trv` (Section 11.7.1), including in the
+    # disjoint branch where `x` is returned with its decoration downgraded
+    isdisjoint_interval(x, y) && return [_unsafe_interval(_bareinterval(x), trv, t)]
     issubset_interval(x, y) && return Interval{T}[]
 
     intersection = intersect_interval(x, y)
-    inf(x) == inf(intersection) && return [interval(sup(intersection), sup(x))]
-    sup(x) == sup(intersection) && return [interval(inf(x), inf(intersection))]
+    inf(x) == inf(intersection) && return [_unsafe_interval(_unsafe_bareinterval(T, sup(intersection), sup(x)), trv, t)]
+    sup(x) == sup(intersection) && return [_unsafe_interval(_unsafe_bareinterval(T, inf(x), inf(intersection)), trv, t)]
 
     return [
-        interval(inf(x), inf(intersection)),
-        interval(sup(intersection), sup(x))
+        _unsafe_interval(_unsafe_bareinterval(T, inf(x), inf(intersection)), trv, t),
+        _unsafe_interval(_unsafe_bareinterval(T, sup(intersection), sup(x)), trv, t)
     ]
 end
