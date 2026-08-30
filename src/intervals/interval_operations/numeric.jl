@@ -78,6 +78,16 @@ end
 
 bounds(x::Real) = bounds(interval(x))
 
+# analogues of `nextfloat(typemin(T))` and `prevfloat(typemax(T))` for
+# `Rational` bounds (cf. Section 12.12.8); unbounded integer types such as
+# `BigInt` have no smallest or largest finite value
+_finitemin(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemin(T))
+_finitemax(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemax(T))
+_finitemin(::Type{Rational{BigInt}}) =
+    throw(ArgumentError("cannot compute the midpoint of unbounded intervals with `Rational{BigInt}` bounds; there is no smallest finite `Rational{BigInt}`"))
+_finitemax(::Type{Rational{BigInt}}) =
+    throw(ArgumentError("cannot compute the midpoint of unbounded intervals with `Rational{BigInt}` bounds; there is no largest finite `Rational{BigInt}`"))
+
 """
     mid(x, α = 0.5)
 
@@ -123,17 +133,17 @@ function mid(x::BareInterval{Rational{T}}, α = 1//2) where {T<:Integer}
     isempty_interval(x) && return throw(ArgumentError("cannot compute the midpoint of empty intervals; cannot return a `Rational` NaN"))
     if isentire_interval(x)
         α == 0.5 && return zero(Rational{T})
-        α > 0.5 && return convert(Rational{T}, typemax(T))
-        return convert(Rational{T}, typemin(T))
+        α > 0.5 && return _finitemax(Rational{T})
+        return _finitemin(Rational{T})
     else
         lo, hi = bounds(x)
         if lo == typemin(Rational{T}) # cf. Section 12.12.8
             α > 0.5 && return _normalisezero(hi)
-            return convert(Rational{T}, typemin(T))
+            return _finitemin(Rational{T})
         end
         if hi == typemax(Rational{T}) # cf. Section 12.12.8
             α < 0.5 && return _normalisezero(lo)
-            return convert(Rational{T}, typemax(T))
+            return _finitemax(Rational{T})
         end
         β = convert(Rational{T}, α)
         return _normalisezero((1 - β) * lo + β * hi)
