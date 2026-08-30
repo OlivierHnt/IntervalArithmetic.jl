@@ -83,7 +83,10 @@ bounds(x::Real) = bounds(interval(x))
 
 Relative midpoint of `x`, for `α` between 0 and 1 such that `mid(x, 0)` is the
 lower bound of the interval, `mid(x, 1)` its upper bound, and `mid(x, 0.5)` its
-midpoint.
+midpoint. For an unbounded interval, the finite bound is returned whenever `α`
+selects its side, and the infinite bound is replaced by the largest finite
+value of the bound type otherwise (cf. Section 12.12.8 of the IEEE Standard
+1788-2015).
 
 Implement the `mid` function of the IEEE Standard 1788-2015 (Table 9.2).
 
@@ -99,8 +102,14 @@ function mid(x::BareInterval{T}, α = 0.5) where {T<:AbstractFloat}
         return nextfloat(typemin(T))
     else
         lo, hi = bounds(x)
-        lo == typemin(T) && return nextfloat(lo) # cf. Section 12.12.8
-        hi == typemax(T) && return prevfloat(hi) # cf. Section 12.12.8
+        if lo == typemin(T) # cf. Section 12.12.8
+            α > 0.5 && return _normalisezero(hi)
+            return nextfloat(lo)
+        end
+        if hi == typemax(T) # cf. Section 12.12.8
+            α < 0.5 && return _normalisezero(lo)
+            return prevfloat(hi)
+        end
         β = convert(T, α)
         midpoint = β * (hi + lo * (1/β - 1)) # exactly 0.5 * (hi + lo) for β = 0.5
         midpoint = ifelse(isfinite(midpoint), midpoint, (1 - β) * lo + β * hi)
@@ -118,8 +127,14 @@ function mid(x::BareInterval{Rational{T}}, α = 1//2) where {T<:Integer}
         return convert(Rational{T}, typemin(T))
     else
         lo, hi = bounds(x)
-        lo == typemin(Rational{T}) && return convert(Rational{T}, typemin(T)) # cf. Section 12.12.8
-        hi == typemax(Rational{T}) && return convert(Rational{T}, typemax(T)) # cf. Section 12.12.8
+        if lo == typemin(Rational{T}) # cf. Section 12.12.8
+            α > 0.5 && return _normalisezero(hi)
+            return convert(Rational{T}, typemin(T))
+        end
+        if hi == typemax(Rational{T}) # cf. Section 12.12.8
+            α < 0.5 && return _normalisezero(lo)
+            return convert(Rational{T}, typemax(T))
+        end
         β = convert(Rational{T}, α)
         return _normalisezero((1 - β) * lo + β * hi)
     end
