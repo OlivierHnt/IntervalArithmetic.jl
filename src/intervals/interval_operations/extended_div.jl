@@ -23,6 +23,8 @@ function extended_div(x::BareInterval{T}, y::BareInterval{T}) where {T<:NumTypes
     end
 end
 
+extended_div(x::BareInterval, y::BareInterval) = extended_div(promote(x, y)...)
+
 function extended_div(x::Interval, y::Interval)
     bx = bareinterval(x)
     by = bareinterval(y)
