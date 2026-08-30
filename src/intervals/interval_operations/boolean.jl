@@ -88,10 +88,9 @@ See also: [`issubset_interval`](@ref) and [`isinterior`](@ref).
 isstrictsubset(x::BareInterval, y::BareInterval) = issubset_interval(x, y) & !isequal_interval(x, y)
 
 isstrictsubset(x::Interval, y::Interval) = issubset_interval(x, y) & !isequal_interval(x, y)
-isstrictsubset(x::Complex{<:Interval}, y::Complex{<:Interval}) =
-    (isstrictsubset(real(x), real(y)) & issubset_interval(imag(x), imag(y))) | (issubset_interval(real(x), real(y)) & isstrictsubset(imag(x), imag(y)))
-isstrictsubset(x::Complex{<:Interval}, y::Interval) = isstrictsubset(real(x), y) & isthinzero(imag(x))
-isstrictsubset(x::Interval, y::Complex{<:Interval}) = isstrictsubset(x, real(y)) & in_interval(0, imag(y))
+isstrictsubset(x::Complex{<:Interval}, y::Complex{<:Interval}) = issubset_interval(x, y) & !isequal_interval(x, y)
+isstrictsubset(x::Complex{<:Interval}, y::Interval) = issubset_interval(x, y) & !isequal_interval(x, y)
+isstrictsubset(x::Interval, y::Complex{<:Interval}) = issubset_interval(x, y) & !isequal_interval(x, y)
 
 isstrictsubset(x::AbstractVector, y::AbstractVector) = issubset_interval(x, y) & any(t -> isstrictsubset(t[1], t[2]), zip(x, y))
 
