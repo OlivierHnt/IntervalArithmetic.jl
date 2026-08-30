@@ -5,7 +5,7 @@
 _set_decoration(x::Interval, d::Decoration) = setdecoration(x, d)
 
 function _set_decoration(x::Interval, d::Symbol)
-    d === :auto    && return x
+    d === :auto    && return setdecoration(x, decoration(x))
     d === :default && return setdecoration(x, min(trv, decoration(x)))
     return throw(ArgumentError("decoration option must be `:default`, `:auto` or a specific decoration"))
 end
@@ -39,7 +39,6 @@ function intersect_interval(x::Interval{T}, y::Interval{S}; dec = :default) wher
     d == ill && return nai(promote_type(T, S)) # one of the inputs is an NaI
     r = intersect_interval(_bareinterval(x), _bareinterval(y))
     t = isguaranteed(x) & isguaranteed(y)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -60,7 +59,6 @@ function intersect_interval(x::Interval, y::Interval, z::Interval, w::Vararg{Int
     d = mapreduce(decoration, min, xs)
     d == ill && return nai(numtype(r)) # one of the inputs is an NaI
     t = mapreduce(isguaranteed, &, xs)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -98,7 +96,6 @@ function hull(x::Interval{T}, y::Interval{S}; dec = :default) where {T<:NumTypes
     d == ill && return nai(promote_type(T, S)) # one of the inputs is an NaI
     r = hull(_bareinterval(x), _bareinterval(y))
     t = isguaranteed(x) & isguaranteed(y)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -119,7 +116,6 @@ function hull(x::Interval, y::Interval, z::Interval, w::Vararg{Interval,N}; dec 
     d = mapreduce(decoration, min, xs)
     d == ill && return nai(numtype(r)) # one of the inputs is an NaI
     t = mapreduce(isguaranteed, &, xs)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
