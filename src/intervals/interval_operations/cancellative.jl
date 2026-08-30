@@ -32,17 +32,21 @@ function cancelminus(x::BareInterval{T}, y::BareInterval{T}) where {T<:NumTypes}
     z = _unsafe_bareinterval(T, z_lo, z_hi)
     isunbounded(z) && return z
 
-    # corner case 1 (page 62) involving finite precision for diam(x) and diam(y)
-    w_lo, w_hi = bounds(@round(T, inf(y) + z_lo, sup(y) + z_hi))
-    (diam(x) == diam(y)) & ((prevfloat(inf(x)) > w_lo) | (nextfloat(sup(x)) < w_hi)) && return entireinterval(BareInterval{T})
+    if T <: AbstractFloat # rational arithmetic is exact, so corner case 1 cannot occur
+        # corner case 1 (page 62) involving finite precision for diam(x) and diam(y)
+        w_lo, w_hi = bounds(@round(T, inf(y) + z_lo, sup(y) + z_hi))
+        (diam(x) == diam(y)) & ((prevfloat(inf(x)) > w_lo) | (nextfloat(sup(x)) < w_hi)) && return entireinterval(BareInterval{T})
+    end
 
     return z
 end
 cancelminus(x::BareInterval, y::BareInterval) = cancelminus(promote(x, y)...)
 
 function cancelminus(x::Interval, y::Interval; dec = :default)
-    r = cancelminus(bareinterval(x), bareinterval(y))
-    d = min(decoration(x), decoration(y), decoration(r))
+    d = min(decoration(x), decoration(y))
+    d == ill && return nai(promote_type(numtype(x), numtype(y))) # one of the inputs is an NaI
+    r = cancelminus(_bareinterval(x), _bareinterval(y))
+    d = min(d, decoration(r))
     t = isguaranteed(x) & isguaranteed(y)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
