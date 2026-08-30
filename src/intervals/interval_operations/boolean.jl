@@ -144,8 +144,14 @@ function isdisjoint_interval(x::Interval, y::Interval)
     return isdisjoint_interval(bareinterval(x), bareinterval(y))
 end
 isdisjoint_interval(x::Complex{<:Interval}, y::Complex{<:Interval}) = isdisjoint_interval(real(x), real(y)) | isdisjoint_interval(imag(x), imag(y))
-isdisjoint_interval(x::Complex{<:Interval}, y::Interval) = isdisjoint_interval(real(x), y) | !in_interval(0, imag(x))
-isdisjoint_interval(x::Interval, y::Complex{<:Interval}) = isdisjoint_interval(x, real(y)) | !in_interval(0, imag(y))
+function isdisjoint_interval(x::Complex{<:Interval}, y::Interval)
+    isnai(x) | isnai(y) && return false
+    return isdisjoint_interval(real(x), y) | !in_interval(0, imag(x))
+end
+function isdisjoint_interval(x::Interval, y::Complex{<:Interval})
+    isnai(x) | isnai(y) && return false
+    return isdisjoint_interval(x, real(y)) | !in_interval(0, imag(y))
+end
 
 function isdisjoint_interval(x::AbstractVector, y::AbstractVector)
     n = length(x)
