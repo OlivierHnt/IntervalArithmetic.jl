@@ -143,11 +143,11 @@ const union_interval = hull
 Remove the interior of `y` from `x`. If `x` and `y` are vectors, then they are
 treated as multi-dimensional intervals.
 
-The keywork `dec` argument controls the decoration of the result. It can be
+The keyword `dec` argument controls the decoration of the result. It can be
 either a specific decoration, or one of two following options:
 - `:default`: if at least one of the input intervals is `ill`,
   then the result is `ill`, otherwise it is `trv` (Section 11.7.1).
-- `:auto`: the ouptut has the minimal decoration of the inputs.
+- `:auto`: the output has the minimal decoration of the inputs.
 """
 interiordiff(x::BareInterval, y::BareInterval) =
     interiordiff!(Vector{promote_type(typeof(x), typeof(y))}(undef, 0), x, y)
@@ -162,7 +162,7 @@ interiordiff(x::AbstractVector{<:Interval}, y::AbstractVector{<:Interval}; dec =
     interiordiff!(Vector{promote_type(typeof(x), typeof(y))}(undef, 0), x, y; dec = dec)
 
 """
-    interiordiff!(x, y; dec = :default)
+    interiordiff!(v, x, y; dec = :default)
 
 In-place version of [`interiordiff`](@ref).
 """

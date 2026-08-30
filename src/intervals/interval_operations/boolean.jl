@@ -164,8 +164,7 @@ _isdisjoint_interval(x, y, z, w...) = _isdisjoint_interval(x, y) && _isdisjoint_
 """
     isweakless(x, y)
 
-Test whether `inf(x) ≤ inf(y)` and `sup(x) ≤ sup(y)`, where `<` is replaced by
-`≤` for infinite values.
+Test whether `inf(x) ≤ inf(y)` and `sup(x) ≤ sup(y)`.
 
 Implement the `less` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
@@ -197,7 +196,7 @@ end
 """
     precedes(x, y)
 
-Test whether any element of `x` is lesser or equal to every elements of `y`.
+Test whether every element of `x` is lesser or equal to every element of `y`.
 
 Implement the `precedes` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
@@ -212,7 +211,7 @@ end
 """
     strictprecedes(x, y)
 
-Test whether any element of `x` is strictly lesser than every elements of `y`.
+Test whether every element of `x` is strictly lesser than every element of `y`.
 
 Implement the `strictPrecedes` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
