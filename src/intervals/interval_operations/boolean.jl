@@ -295,7 +295,7 @@ Implement the `isNaI` function of the IEEE Standard 1788-2015 (Section 12.12.9).
 isnai(::BareInterval) = false
 
 isnai(x::Interval) = decoration(x) == ill
-isnai(x::Complex{<:Interval}) = isnai(real(x)) & isnai(imag(x))
+isnai(x::Complex{<:Interval}) = isnai(real(x)) | isnai(imag(x))
 
 """
     isbounded(x)
