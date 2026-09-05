@@ -5,7 +5,7 @@
 _set_decoration(x::Interval, d::Decoration) = setdecoration(x, d)
 
 function _set_decoration(x::Interval, d::Symbol)
-    d === :auto    && return x
+    d === :auto    && return setdecoration(x, decoration(x))
     d === :default && return setdecoration(x, min(trv, decoration(x)))
     return throw(ArgumentError("decoration option must be `:default`, `:auto` or a specific decoration"))
 end
@@ -39,7 +39,6 @@ function intersect_interval(x::Interval{T}, y::Interval{S}; dec = :default) wher
     d == ill && return nai(promote_type(T, S)) # one of the inputs is an NaI
     r = intersect_interval(_bareinterval(x), _bareinterval(y))
     t = isguaranteed(x) & isguaranteed(y)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -60,7 +59,6 @@ function intersect_interval(x::Interval, y::Interval, z::Interval, w::Vararg{Int
     d = mapreduce(decoration, min, xs)
     d == ill && return nai(numtype(r)) # one of the inputs is an NaI
     t = mapreduce(isguaranteed, &, xs)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -98,7 +96,6 @@ function hull(x::Interval{T}, y::Interval{S}; dec = :default) where {T<:NumTypes
     d == ill && return nai(promote_type(T, S)) # one of the inputs is an NaI
     r = hull(_bareinterval(x), _bareinterval(y))
     t = isguaranteed(x) & isguaranteed(y)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -119,7 +116,6 @@ function hull(x::Interval, y::Interval, z::Interval, w::Vararg{Interval,N}; dec 
     d = mapreduce(decoration, min, xs)
     d == ill && return nai(numtype(r)) # one of the inputs is an NaI
     t = mapreduce(isguaranteed, &, xs)
-    dec === :default && return _unsafe_interval(r, trv, t)
     return _set_decoration(_unsafe_interval(r, d, t), dec)
 end
 
@@ -143,11 +139,11 @@ const union_interval = hull
 Remove the interior of `y` from `x`. If `x` and `y` are vectors, then they are
 treated as multi-dimensional intervals.
 
-The keywork `dec` argument controls the decoration of the result. It can be
+The keyword `dec` argument controls the decoration of the result. It can be
 either a specific decoration, or one of two following options:
 - `:default`: if at least one of the input intervals is `ill`,
   then the result is `ill`, otherwise it is `trv` (Section 11.7.1).
-- `:auto`: the ouptut has the minimal decoration of the inputs.
+- `:auto`: the output has the minimal decoration of the inputs.
 """
 interiordiff(x::BareInterval, y::BareInterval) =
     interiordiff!(Vector{promote_type(typeof(x), typeof(y))}(undef, 0), x, y)
@@ -162,30 +158,15 @@ interiordiff(x::AbstractVector{<:Interval}, y::AbstractVector{<:Interval}; dec =
     interiordiff!(Vector{promote_type(typeof(x), typeof(y))}(undef, 0), x, y; dec = dec)
 
 """
-    interiordiff!(x, y; dec = :default)
+    interiordiff!(v, x, y; dec = :default)
 
 In-place version of [`interiordiff`](@ref).
 """
 function interiordiff!(v::AbstractVector, x::BareInterval{T}, y::BareInterval{T}) where {T<:NumTypes}
-    if isinterior(x, y)
-        empty!(v)
-    elseif isdisjoint_interval(x, y)
-        resize!(v, 1)
-        @inbounds v[begin] = x
-    else
-        inter = intersect_interval(x, y)
-        if issubset_interval(y, x)
-            resize!(v, 2)
-            @inbounds v[begin] = _unsafe_bareinterval(T, inf(x), inf(inter))
-            @inbounds v[end] = _unsafe_bareinterval(T, sup(inter), sup(x))
-        elseif isweakless(x, inter)
-            resize!(v, 1)
-            @inbounds v[begin] = _unsafe_bareinterval(T, inf(x), inf(inter))
-        else
-            resize!(v, 1)
-            @inbounds v[begin] = _unsafe_bareinterval(T, sup(inter), sup(x))
-        end
-    end
+    h₁, h₂, _ = _interiordiff(x, y, nothing)
+    empty!(v)
+    isempty_interval(h₁) || push!(v, h₁)
+    isempty_interval(h₂) || push!(v, h₂)
     return v
 end
 interiordiff!(v::AbstractVector, x::BareInterval, y::BareInterval) = interiordiff!(v, promote(x, y)...)
@@ -193,31 +174,17 @@ interiordiff!(v::AbstractVector{<:AbstractVector}, x::AbstractVector{<:BareInter
     _interiordiff!(v, x, y, nothing)
 
 function interiordiff!(v::AbstractVector, x::Interval{T}, y::Interval{T}; dec = :default) where {T<:NumTypes}
-    if isinterior(x, y)
-        empty!(v)
-    elseif isdisjoint_interval(x, y)
+    d = min(decoration(x), decoration(y))
+    if d == ill # one of the inputs is an NaI
         resize!(v, 1)
-        @inbounds v[begin] = x
-    else
-        d = min(decoration(x), decoration(y))
-        t = isguaranteed(x) & isguaranteed(y)
-        inter = intersect_interval(x, y)
-        if issubset_interval(y, x)
-            resize!(v, 2)
-            r1 = _unsafe_bareinterval(T, inf(x), inf(inter))
-            @inbounds v[begin] = _set_decoration(_unsafe_interval(r1, d, t), dec)
-            r2 = _unsafe_bareinterval(T, sup(inter), sup(x))
-            @inbounds v[end] = _set_decoration(_unsafe_interval(r2, d, t), dec)
-        elseif isweakless(x, inter)
-            resize!(v, 1)
-            r1 = _unsafe_bareinterval(T, inf(x), inf(inter))
-            @inbounds v[begin] = _set_decoration(_unsafe_interval(r1, d, t), dec)
-        else
-            resize!(v, 1)
-            r2 = _unsafe_bareinterval(T, sup(inter), sup(x))
-            @inbounds v[begin] = _set_decoration(_unsafe_interval(r2, d, t), dec)
-        end
+        @inbounds v[begin] = nai(T)
+        return v
     end
+    t = isguaranteed(x) & isguaranteed(y)
+    h₁, h₂, _ = _interiordiff(_bareinterval(x), _bareinterval(y), nothing)
+    empty!(v)
+    isempty_interval(h₁) || push!(v, _set_decoration(_unsafe_interval(h₁, d, t), dec))
+    isempty_interval(h₂) || push!(v, _set_decoration(_unsafe_interval(h₂, d, t), dec))
     return v
 end
 interiordiff!(v::AbstractVector, x::Interval, y::Interval; dec = :default) = interiordiff!(v, promote(x, y)...; dec = dec)
@@ -232,8 +199,14 @@ function _interiordiff!(v::AbstractVector{<:AbstractVector}, x::AbstractVector, 
     N == len || return throw(DimensionMismatch("x has length $N, y has length $len"))
 
     if any(t -> isdisjoint_interval(t[1], t[2]), zip(x, y))
-        resize!(v, 1)
-        @inbounds v[begin] = copy(x)
+        # mirror the filter of the general case: an empty or NaI component
+        # means that `x` does not describe a box
+        if any(t -> isempty_interval(t) | isnai(t), x)
+            empty!(v)
+        else
+            resize!(v, 1)
+            @inbounds v[begin] = copy(x)
+        end
     else
         resize!(v, 2N)
 
@@ -261,16 +234,16 @@ function _interiordiff!(v::AbstractVector{<:AbstractVector}, x::AbstractVector, 
 end
 
 function _interiordiff(x::BareInterval{T}, y::BareInterval{T}, ::Nothing) where {T<:NumTypes}
-    isdisjoint_interval(x, y) && return (x, emptyinterval(BareInterval{T}), emptyinterval(BareInterval{T}))
-
     inter = intersect_interval(x, y)
+    isdisjoint_interval(x, y) && return (x, emptyinterval(BareInterval{T}), inter)
     isinterior(x, y) && return (emptyinterval(BareInterval{T}), emptyinterval(BareInterval{T}), inter)
-    isequal_interval(x, y) && return (_unsafe_bareinterval(T, inf(x), inf(x)), _unsafe_bareinterval(T, sup(x), sup(x)), inter)
 
-    inf(x) == inf(inter) && return (_unsafe_bareinterval(T, sup(inter), sup(x)), emptyinterval(BareInterval{T}), inter)
-    sup(x) == sup(inter) && return (_unsafe_bareinterval(T, inf(x), inf(inter)), emptyinterval(BareInterval{T}), inter)
-
-    return (_unsafe_bareinterval(T, inf(x), inf(y)), _unsafe_bareinterval(T, sup(y), sup(x)), inter)
+    # a piece of `x` survives on a given side only if the corresponding bound
+    # of `y` is finite, since an infinite bound means that the interior of `y`
+    # is unbounded on that side
+    h₁ = (inf(x) ≤ inf(y)) & (inf(y) != typemin(T)) ? _unsafe_bareinterval(T, inf(x), inf(y)) : emptyinterval(BareInterval{T})
+    h₂ = (sup(y) ≤ sup(x)) & (sup(y) != typemax(T)) ? _unsafe_bareinterval(T, sup(y), sup(x)) : emptyinterval(BareInterval{T})
+    return (h₁, h₂, inter)
 end
 _interiordiff(x::BareInterval, y::BareInterval, dec::Nothing) = _interiordiff(promote(x, y)..., dec)
 
@@ -284,15 +257,20 @@ end
 #
 
 function interval_diff(x::Interval{T}, y::Interval) where {T<:NumTypes}
-    isdisjoint_interval(x, y) && return [x]
+    d = min(decoration(x), decoration(y))
+    d == ill && return [nai(T)] # one of the inputs is an NaI
+    t = isguaranteed(x) & isguaranteed(y)
+    # the pieces are decorated `trv` (Section 11.7.1), including in the
+    # disjoint branch where `x` is returned with its decoration downgraded
+    isdisjoint_interval(x, y) && return [_unsafe_interval(_bareinterval(x), trv, t)]
     issubset_interval(x, y) && return Interval{T}[]
 
     intersection = intersect_interval(x, y)
-    inf(x) == inf(intersection) && return [interval(sup(intersection), sup(x))]
-    sup(x) == sup(intersection) && return [interval(inf(x), inf(intersection))]
+    inf(x) == inf(intersection) && return [_unsafe_interval(_unsafe_bareinterval(T, sup(intersection), sup(x)), trv, t)]
+    sup(x) == sup(intersection) && return [_unsafe_interval(_unsafe_bareinterval(T, inf(x), inf(intersection)), trv, t)]
 
     return [
-        interval(inf(x), inf(intersection)),
-        interval(sup(intersection), sup(x))
+        _unsafe_interval(_unsafe_bareinterval(T, inf(x), inf(intersection)), trv, t),
+        _unsafe_interval(_unsafe_bareinterval(T, sup(intersection), sup(x)), trv, t)
     ]
 end

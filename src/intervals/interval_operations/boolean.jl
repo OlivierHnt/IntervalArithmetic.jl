@@ -88,10 +88,9 @@ See also: [`issubset_interval`](@ref) and [`isinterior`](@ref).
 isstrictsubset(x::BareInterval, y::BareInterval) = issubset_interval(x, y) & !isequal_interval(x, y)
 
 isstrictsubset(x::Interval, y::Interval) = issubset_interval(x, y) & !isequal_interval(x, y)
-isstrictsubset(x::Complex{<:Interval}, y::Complex{<:Interval}) =
-    (isstrictsubset(real(x), real(y)) & issubset_interval(imag(x), imag(y))) | (issubset_interval(real(x), real(y)) & isstrictsubset(imag(x), imag(y)))
-isstrictsubset(x::Complex{<:Interval}, y::Interval) = isstrictsubset(real(x), y) & isthinzero(imag(x))
-isstrictsubset(x::Interval, y::Complex{<:Interval}) = isstrictsubset(x, real(y)) & in_interval(0, imag(y))
+isstrictsubset(x::Complex{<:Interval}, y::Complex{<:Interval}) = issubset_interval(x, y) & !isequal_interval(x, y)
+isstrictsubset(x::Complex{<:Interval}, y::Interval) = issubset_interval(x, y) & !isequal_interval(x, y)
+isstrictsubset(x::Interval, y::Complex{<:Interval}) = issubset_interval(x, y) & !isequal_interval(x, y)
 
 isstrictsubset(x::AbstractVector, y::AbstractVector) = issubset_interval(x, y) & any(t -> isstrictsubset(t[1], t[2]), zip(x, y))
 
@@ -145,8 +144,14 @@ function isdisjoint_interval(x::Interval, y::Interval)
     return isdisjoint_interval(bareinterval(x), bareinterval(y))
 end
 isdisjoint_interval(x::Complex{<:Interval}, y::Complex{<:Interval}) = isdisjoint_interval(real(x), real(y)) | isdisjoint_interval(imag(x), imag(y))
-isdisjoint_interval(x::Complex{<:Interval}, y::Interval) = isdisjoint_interval(real(x), y) | !in_interval(0, imag(x))
-isdisjoint_interval(x::Interval, y::Complex{<:Interval}) = isdisjoint_interval(x, real(y)) | !in_interval(0, imag(y))
+function isdisjoint_interval(x::Complex{<:Interval}, y::Interval)
+    isnai(x) | isnai(y) && return false
+    return isdisjoint_interval(real(x), y) | !in_interval(0, imag(x))
+end
+function isdisjoint_interval(x::Interval, y::Complex{<:Interval})
+    isnai(x) | isnai(y) && return false
+    return isdisjoint_interval(x, real(y)) | !in_interval(0, imag(y))
+end
 
 function isdisjoint_interval(x::AbstractVector, y::AbstractVector)
     n = length(x)
@@ -164,8 +169,7 @@ _isdisjoint_interval(x, y, z, w...) = _isdisjoint_interval(x, y) && _isdisjoint_
 """
     isweakless(x, y)
 
-Test whether `inf(x) ≤ inf(y)` and `sup(x) ≤ sup(y)`, where `<` is replaced by
-`≤` for infinite values.
+Test whether `inf(x) ≤ inf(y)` and `sup(x) ≤ sup(y)`.
 
 Implement the `less` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
@@ -197,7 +201,7 @@ end
 """
     precedes(x, y)
 
-Test whether any element of `x` is lesser or equal to every elements of `y`.
+Test whether every element of `x` is lesser or equal to every element of `y`.
 
 Implement the `precedes` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
@@ -212,7 +216,7 @@ end
 """
     strictprecedes(x, y)
 
-Test whether any element of `x` is strictly lesser than every elements of `y`.
+Test whether every element of `x` is strictly lesser than every element of `y`.
 
 Implement the `strictPrecedes` function of the IEEE Standard 1788-2015
 (Table 10.3, and Sections 10.5.10 and 12.12.9).
@@ -296,7 +300,7 @@ Implement the `isNaI` function of the IEEE Standard 1788-2015 (Section 12.12.9).
 isnai(::BareInterval) = false
 
 isnai(x::Interval) = decoration(x) == ill
-isnai(x::Complex{<:Interval}) = isnai(real(x)) & isnai(imag(x))
+isnai(x::Complex{<:Interval}) = isnai(real(x)) | isnai(imag(x))
 
 """
     isbounded(x)

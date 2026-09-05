@@ -58,6 +58,7 @@ _check_minceable(x) = isbounded(x) ||
 In-place version of [`mince`](@ref).
 """
 function mince!(v::AbstractVector{<:BareInterval}, x::BareInterval{T}, n::Integer) where {T<:NumTypes}
+    resize!(v, n)
     if isempty_interval(x) # an empty interval has no nodes to interpolate
         for i ∈ 1:n
             v[i] = emptyinterval(x)
@@ -66,13 +67,18 @@ function mince!(v::AbstractVector{<:BareInterval}, x::BareInterval{T}, n::Intege
     end
     _check_minceable(x)
     nodes = LinRange(inf(x), sup(x), n+1)
+    lo = inf(x)
     @inbounds for i ∈ 1:n
-        v[i] = _unsafe_bareinterval(T, nodes[i], nodes[i+1])
+        # `LinRange` may interpolate non-monotonically, clamp the nodes to keep every piece valid
+        hi = i == n ? sup(x) : min(max(nodes[i+1], lo), sup(x))
+        v[i] = _unsafe_bareinterval(T, lo, hi)
+        lo = hi
     end
     return v
 end
 
 function mince!(v::AbstractVector{<:Interval}, x::Interval{T}, n::Integer) where {T<:NumTypes}
+    resize!(v, n)
     if isnai(x) | isempty_interval(x) # neither has nodes to interpolate
         y = isnai(x) ? nai(x) : emptyinterval(x)
         for i ∈ 1:n
@@ -84,10 +90,14 @@ function mince!(v::AbstractVector{<:Interval}, x::Interval{T}, n::Integer) where
     nodes = LinRange(inf(x), sup(x), n+1)
     d = decoration(x)
     t = isguaranteed(x)
+    lo = inf(x)
     @inbounds for i ∈ 1:n
-        rᵢ = _unsafe_bareinterval(T, nodes[i], nodes[i+1])
+        # `LinRange` may interpolate non-monotonically, clamp the nodes to keep every piece valid
+        hi = i == n ? sup(x) : min(max(nodes[i+1], lo), sup(x))
+        rᵢ = _unsafe_bareinterval(T, lo, hi)
         dᵢ = min(d, decoration(rᵢ))
         v[i] = _unsafe_interval(rᵢ, dᵢ, t)
+        lo = hi
     end
     return v
 end
