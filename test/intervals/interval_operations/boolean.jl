@@ -112,6 +112,10 @@ end
     @test !isstrictsubset(complex(interval(1), interval(0, 1)), interval(0, 2))
     @test isstrictsubset(interval(1), complex(interval(0, 2), interval(-1, 1)))
     @test !isstrictsubset(interval(1), complex(interval(0, 2), interval(1, 2)))
+    # equal real parts: strict because `imag(y)` strictly contains [0, 0]
+    @test isstrictsubset(interval(0, 1), complex(interval(0, 1), interval(-1, 1)))
+    @test !isstrictsubset(interval(0, 1), complex(interval(0, 1), interval(0, 0)))
+    @test isstrictsubset(complex(interval(0, 1), interval(0, 0)), complex(interval(0, 1), interval(-1, 1)))
 
     @test isstrictsubset([interval(1, 2), interval(1, 2)], [interval(1, 2), interval(0, 3)])
     @test !isstrictsubset([interval(1, 2), interval(1, 2)], [interval(1, 2), interval(1, 2)])
@@ -178,6 +182,11 @@ end
     @test !isdisjoint_interval(complex(interval(0, 2), interval(0, 2)), complex(interval(1, 3), interval(1, 3)))
     @test isdisjoint_interval(complex(interval(1, 2), interval(1, 2)), interval(1, 2))
     @test !isdisjoint_interval(complex(interval(1, 2), interval(-1, 1)), interval(1, 2))
+    # any NaI input yields `false`, never an unsafe assertion of disjointness
+    @test !isdisjoint_interval(complex(interval(1, 2), nai()), interval(0, 3))
+    @test !isdisjoint_interval(interval(0, 3), complex(interval(1, 2), nai()))
+    @test !isdisjoint_interval(complex(nai(), interval(1, 2)), interval(0, 3))
+    @test !isdisjoint_interval(complex(interval(5, 6), nai()), interval(0, 3))
     @test isdisjoint_interval(interval(1, 2), complex(interval(1, 2), interval(1, 2)))
     @test !isdisjoint_interval(interval(1, 2), complex(interval(1, 2), interval(-1, 1)))
 
@@ -312,7 +321,9 @@ end
     x = @test_logs (:warn,) interval(Inf)
     @test isnai(x)
     @test isnai(complex(nai(), nai()))
-    @test !isnai(complex(nai(), interval(1)))
+    @test isnai(complex(nai(), interval(1)))
+    @test isnai(complex(interval(1), nai()))
+    @test !isnai(complex(interval(1), interval(2)))
 end
 
 @testset "isbounded, isunbounded and iscommon" begin

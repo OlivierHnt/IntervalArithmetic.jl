@@ -53,8 +53,12 @@ end
     @test cancelminus(bareinterval(Float32, 1, 3), bareinterval(1.0, 2.0)) isa BareInterval{Float64}
     @test isequal_interval(cancelminus(bareinterval(Float32, 1, 3), bareinterval(1.0, 2.0)), bareinterval(0, 1))
     @test isequal_interval(cancelminus(bareinterval(BigFloat, 1, 3), bareinterval(BigFloat, 1, 2)), bareinterval(BigFloat, 0, 1))
-    # `prevfloat` has no `Rational` method, cf. src/intervals/interval_operations/cancellative.jl
-    @test_throws MethodError cancelminus(bareinterval(1//1, 3//1), bareinterval(1//1, 2//1))
+    # rational arithmetic is exact, so the corner case 1 guard (a finite-precision
+    # artifact needing `prevfloat`/`nextfloat`) is skipped, cf. src/intervals/interval_operations/cancellative.jl
+    @test isequal_interval(cancelminus(bareinterval(1//1, 3//1), bareinterval(1//1, 2//1)), bareinterval(0//1, 1//1))
+    @test isequal_interval(cancelplus(bareinterval(1//1, 3//1), bareinterval(-2//1, -1//1)), bareinterval(0//1, 1//1))
+    @test cancelminus(bareinterval(1//1, 3//1), bareinterval(1//1, 2//1)) isa BareInterval{Rational{Int}}
+    @test isequal_interval(cancelminus(bareinterval(1//1, 3//1), emptyinterval(BareInterval{Rational{Int}})), entireinterval(BareInterval{Rational{Int}}))
 end
 
 @testset "cancelplus" begin
@@ -105,10 +109,13 @@ end
     @test decoration(cancelminus(emptyinterval(), interval(1, 2); dec = com)) == trv
     @test_throws ArgumentError cancelminus(interval(1, 3), interval(1, 2); dec = :bogus)
 
-    r = @test_logs (:warn,) cancelminus(nai(), interval(1, 2))
+    # NaI in, NaI out, with no spurious "interval part of NaI" warning
+    r = @test_logs cancelminus(nai(), interval(1, 2))
     @test isnai(r)
-    r = @test_logs (:warn,) cancelminus(interval(1, 2), nai())
+    r = @test_logs cancelminus(interval(1, 2), nai())
     @test isnai(r)
+    @test isnai(@test_logs cancelminus(nai(), interval(1, 2); dec = com))
+    @test isnai(@test_logs cancelplus(nai(), interval(1, 2)))
 
     @test isguaranteed(cancelminus(interval(1, 3), interval(1, 2)))
     @test !isguaranteed(cancelminus(interval(1, 3), convert(Interval{Float64}, 1)))

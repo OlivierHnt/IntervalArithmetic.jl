@@ -1,5 +1,6 @@
 using Test
 using IntervalArithmetic
+using Random
 
 @testset "inf and sup" begin
     @test inf(bareinterval(0, 1)) === -0.0
@@ -78,10 +79,29 @@ end
     @test mid(entireinterval(BareInterval{Rational{Int64}}), 3//4) == Rational{Int64}(typemax(Int64))
     @test mid(entireinterval(BareInterval{Rational{Int64}}), 1//4) == Rational{Int64}(typemin(Int64))
 
-    for α ∈ (0.25, 0.5, 0.75)
+    # `α` acts as a threshold: the finite bound is reachable when `α` selects its side
+    @test mid(bareinterval(-Inf, 1)) == -floatmax(Float64)
+    @test mid(bareinterval(1, Inf)) == floatmax(Float64)
+    for α ∈ (0.0, 0.25, 0.5)
         @test mid(bareinterval(-Inf, 1), α) == -floatmax(Float64)
+    end
+    for α ∈ (0.75, 1.0)
+        @test mid(bareinterval(-Inf, 1), α) == 1.0
+    end
+    for α ∈ (0.0, 0.25)
+        @test mid(bareinterval(1, Inf), α) == 1.0
+    end
+    for α ∈ (0.5, 0.75, 1.0)
         @test mid(bareinterval(1, Inf), α) == floatmax(Float64)
     end
+    # `typemin`/`typemax` do not exist for `BigInt`, so the clamp throws an informative error
+    @test mid(entireinterval(BareInterval{Rational{BigInt}})) == 0//1
+    @test midradius(entireinterval(BareInterval{Rational{BigInt}})) == (0//1, 1//0)
+    @test mid(bareinterval(Rational{BigInt}(-1, 0), Rational{BigInt}(1)), 1.0) == 1//1
+    @test_throws ArgumentError mid(bareinterval(Rational{BigInt}(-1, 0), Rational{BigInt}(1)))
+    @test_throws "no smallest finite" mid(bareinterval(Rational{BigInt}(-1, 0), Rational{BigInt}(1)))
+    @test_throws "no largest finite" mid(entireinterval(BareInterval{Rational{BigInt}}), 0.75)
+
     @test mid(interval(-Inf, 1)) == nextfloat(-Inf)
     @test mid(interval(1, Inf)) == prevfloat(Inf)
     @test mid(interval(1, Inf), 0.75) > 0
@@ -154,6 +174,18 @@ end
         @test (m - r ≤ inf(x)) & (sup(x) ≤ m + r)
     end
 
+    # the radius is rounded upward (Section 12.12.8), so `mid(x) ± radius(x)` encloses `x`;
+    # with round-to-nearest this fails for about half of the wide intervals
+    enclosed(x) = issubset_interval(interval(inf(x), sup(x)), interval(midradius(x)...; format = :midpoint))
+    @test enclosed(bareinterval(-3.514641998989496e-149, 2.2210542297708545e247))
+    @test enclosed(bareinterval(-floatmin(Float64), 1.3))
+    rng = MersenneTwister(20260910)
+    @test all(1:10^4) do _
+        lo, hi = minmax(reinterpret(Float64, rand(rng, UInt64)), reinterpret(Float64, rand(rng, UInt64)))
+        (isfinite(lo) & isfinite(hi)) || return true
+        return enclosed(bareinterval(lo, hi))
+    end
+
     @test radius(entireinterval(BareInterval{Float64})) == Inf
     @test mid(entireinterval(BareInterval{Float64})) == 0.0
 
@@ -205,6 +237,14 @@ end
     @test mig(-3) == 3.0
     @test mig(complex(interval(0, 3), interval(0, 4))) == 0
     @test mig(complex(interval(1, 2), interval(3, 4))) == 3.162277660168379
+
+    # an empty component makes the whole complex interval empty: NaN, not a negative magnitude
+    @test isnan(mag(complex(emptyinterval(), interval(1, 2))))
+    @test isnan(mag(complex(interval(1, 2), emptyinterval())))
+    @test isnan(mig(complex(emptyinterval(), interval(1, 2))))
+    @test isnan(mig(complex(interval(1, 2), emptyinterval())))
+    @test_throws ArgumentError mag(complex(emptyinterval(Interval{Rational{Int}}), interval(Rational{Int}, 1, 2)))
+    @test_throws ArgumentError mig(complex(emptyinterval(Interval{Rational{Int}}), interval(Rational{Int}, 1, 2)))
 end
 
 @testset "dist" begin
@@ -222,6 +262,16 @@ end
 
     @test isnan(dist(nai(), interval(1, 2)))
     @test_throws ArgumentError dist(nai(Interval{Rational{Int}}), interval(Rational{Int}, 1, 2))
+
+    # equal infinite bounds contribute 0 rather than `Inf - Inf`
+    @test dist(entireinterval(), entireinterval()) == 0.0
+    @test dist(entireinterval(BareInterval{Float64}), entireinterval(BareInterval{Float64})) == 0.0
+    @test dist(interval(-Inf, 0), interval(-Inf, 1)) == 1.0
+    @test dist(interval(0, Inf), interval(1, Inf)) == 1.0
+    @test dist(interval(-Inf, 0), interval(0, Inf)) == Inf
+    # `(-1//0) - (-1//0)` throws a `DivideError`, so the rational path needs the same guard
+    @test dist(interval(Rational{Int}, -1//0, 0//1), interval(Rational{Int}, -1//0, 1//1)) == 1//1
+    @test dist(entireinterval(BareInterval{Rational{Int}}), entireinterval(BareInterval{Rational{Int}})) == 0//1
 
     @test_throws MethodError dist(1, 2)
 end

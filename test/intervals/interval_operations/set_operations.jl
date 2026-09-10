@@ -52,6 +52,11 @@ end
     @test decoration(intersect_interval(interval(1, 3), interval(2, 4); dec = def)) == def
     @test isnai(intersect_interval(interval(1, 3), interval(2, 4); dec = ill))
     @test decoration(intersect_interval(interval(1, 2), interval(3, 4); dec = com)) == trv
+    # `:auto` must reconcile with what the result can carry: an empty interval is `trv` at best
+    @test decoration(intersect_interval(interval(1, 2), interval(3, 4); dec = :auto)) == trv
+    @test isempty_interval(intersect_interval(interval(1, 2), interval(3, 4); dec = :auto))
+    @test decoration(intersect_interval(interval(1, 2), interval(3, 4); dec = :default)) == trv
+    @test decoration(hull(interval(-Inf, 0), interval(1, 2); dec = com)) == dac
     @test_throws ArgumentError intersect_interval(interval(1, 3), interval(2, 4); dec = :bogus)
 
     @test intersect_interval(interval(Float32, 1, 3), interval(2.0, 4.0)) isa Interval{Float64}
@@ -258,10 +263,14 @@ end
     @test isempty_interval(h₁) & isempty_interval(h₂) & isequal_interval(inter, bareinterval(2, 3))
     h₁, h₂, inter = IntervalArithmetic._interiordiff(bareinterval(1, 4), bareinterval(1, 4), nothing)
     @test isequal_interval(h₁, bareinterval(1, 1)) & isequal_interval(h₂, bareinterval(4, 4)) & isequal_interval(inter, bareinterval(1, 4))
+    # a shared endpoint of `y` is a boundary point, so it survives `x \ int(y)`
     h₁, h₂, inter = IntervalArithmetic._interiordiff(bareinterval(1, 4), bareinterval(1, 3), nothing)
-    @test isequal_interval(h₁, bareinterval(3, 4)) & isempty_interval(h₂) & isequal_interval(inter, bareinterval(1, 3))
+    @test isequal_interval(h₁, bareinterval(1, 1)) & isequal_interval(h₂, bareinterval(3, 4)) & isequal_interval(inter, bareinterval(1, 3))
     h₁, h₂, inter = IntervalArithmetic._interiordiff(bareinterval(1, 4), bareinterval(2, 4), nothing)
-    @test isequal_interval(h₁, bareinterval(1, 2)) & isempty_interval(h₂) & isequal_interval(inter, bareinterval(2, 4))
+    @test isequal_interval(h₁, bareinterval(1, 2)) & isequal_interval(h₂, bareinterval(4, 4)) & isequal_interval(inter, bareinterval(2, 4))
+    # an infinite bound of `y` has unbounded interior on that side, so no piece survives there
+    h₁, h₂, inter = IntervalArithmetic._interiordiff(bareinterval(-Inf, 3), bareinterval(-Inf, 2), nothing)
+    @test isempty_interval(h₁) & isequal_interval(h₂, bareinterval(2, 3)) & isequal_interval(inter, bareinterval(-Inf, 2))
     h₁, h₂, inter = IntervalArithmetic._interiordiff(bareinterval(1, 4), bareinterval(2, 3), nothing)
     @test isequal_interval(h₁, bareinterval(1, 2)) & isequal_interval(h₂, bareinterval(3, 4)) & isequal_interval(inter, bareinterval(2, 3))
 end
@@ -367,5 +376,14 @@ end
 
     r = interval_diff(interval(1, 4), interval(2, 3))
     @test all(isequal_interval.(r, [interval(1, 2), interval(3, 4)]))
-    @test all(d -> d == com, decoration.(r))
+    # the pieces are built with the internal constructor, so `trv` at best,
+    # and the guarantee is propagated rather than upgraded
+    @test all(d -> d == trv, decoration.(r))
+    @test all(isguaranteed, r)
+    r = interval_diff(interval(1, 10, def), interval(2, 5))
+    @test all(d -> d == trv, decoration.(r))
+    r = interval_diff(interval(1, 4), convert(Interval{Float64}, 2))
+    @test all(!isguaranteed, r)
+    @test all(d -> d == trv, decoration.(interval_diff(interval(1, 10), interval(20, 30))))
+    @test isnai(only(interval_diff(nai(), interval(1, 2))))
 end

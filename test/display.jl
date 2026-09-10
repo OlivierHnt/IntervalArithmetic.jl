@@ -98,12 +98,12 @@ setprecision(BigFloat, 256) do
             setdisplay(:midpoint; sigdigits = 6, decorations = false, ng_flag = false)
             @test repr(emptyinterval(BareInterval{Float64})) == "∅"
             @test repr(bareinterval(1, 2)) == "1.5 ± 0.5"
-            @test repr(a) == "0.65 ± 0.65"
+            @test repr(a) == "0.65 ± 0.650001"
             @test repr(large_expo) == "(5.0e+123456788 ± 5.0e+123456788)₂₅₆"
 
             setdisplay(; decorations = true, ng_flag = true)
             @test repr(bareinterval(1, 2)) == "1.5 ± 0.5"
-            @test repr(a) == "0.65 ± 0.65"
+            @test repr(a) == "0.65 ± 0.650001"
         finally
             setdisplay(:infsup; decorations = true, ng_flag = true, sigdigits = 6)
         end
@@ -186,9 +186,9 @@ setprecision(BigFloat, 256) do
             @test repr(emptyinterval()/1) == "∅_trv_NG"
             @test repr(a) == "(1.5 ± 0.5)_com"
             @test repr(a_NG) == "(1.5 ± 0.5)_com_NG"
-            @test repr(b) == "(0.65 ± 0.65)_com"
-            @test repr(b32) == "(0.65f0 ± 0.65f0)_com"
-            @test repr(b16) == "(Float16(0.65) ± Float16(0.65))_com"
+            @test repr(b) == "(0.65 ± 0.650001)_com"
+            @test repr(b32) == "(0.65f0 ± 0.650001f0)_com"
+            @test repr(b16) == "(Float16(0.65) ± Float16(0.6504))_com"
             @test repr(br) == "(1//10 ± 6//5)_com"
             @test repr(c) == "(1.79769e+308 ± ∞)_dac"
             @test repr(cr) == "(9223372036854775807//1 ± ∞)_dac"
@@ -200,9 +200,9 @@ setprecision(BigFloat, 256) do
             @test repr(emptyinterval()/1) == "∅_NG"
             @test repr(a) == "1.5 ± 0.5"
             @test repr(a_NG) == "(1.5 ± 0.5)_NG"
-            @test repr(b) == "0.65 ± 0.65"
-            @test repr(b32) == "0.65f0 ± 0.65f0"
-            @test repr(b16) == "Float16(0.65) ± Float16(0.65)"
+            @test repr(b) == "0.65 ± 0.650001"
+            @test repr(b32) == "0.65f0 ± 0.650001f0"
+            @test repr(b16) == "Float16(0.65) ± Float16(0.6504)"
             @test repr(br) == "1//10 ± 6//5"
             @test repr(c) == "1.79769e+308 ± ∞"
             @test repr(cr) == "9223372036854775807//1 ± ∞"

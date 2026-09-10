@@ -28,7 +28,14 @@ using IntervalArithmetic
         @test issubset_interval(x / y, hull(extended_div(x, y)...))
     end
 
-    @test_throws MethodError extended_div(bareinterval(Float32, 1, 2), bareinterval(1.0, 2.0))
+    # mixed bound types promote, like every sibling binary operation
+    @test all(isequal_interval.(extended_div(bareinterval(Float32, 1, 2), bareinterval(1.0, 2.0)),
+        (bareinterval(0.5, 2.0), emptyinterval(BareInterval{Float64}))))
+    @test all(isequal_interval.(extended_div(bareinterval(Float32, 1, 2), bareinterval(-4.0, 4.0)),
+        extended_div(bareinterval(1.0, 2.0), bareinterval(-4.0, 4.0))))
+    @test all(x -> x isa BareInterval{Float64}, extended_div(bareinterval(Float32, 1, 2), bareinterval(1.0, 2.0)))
+    @test all(isequal_interval.(extended_div(interval(Float32, 1, 2), interval(-4.0, 4.0)),
+        extended_div(interval(1.0, 2.0), interval(-4.0, 4.0))))
 
     @test all(isequal_interval.(extended_div(bareinterval(Float32, 1, 2), bareinterval(Float32, -1, 1)),
         (bareinterval(Float32, -Inf, -1), bareinterval(Float32, 1, Inf))))

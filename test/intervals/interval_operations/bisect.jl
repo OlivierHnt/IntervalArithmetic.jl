@@ -233,6 +233,33 @@ end
     @test all(box -> isempty_interval(box[1]), v)
 end
 
+@testset "mince! monotonicity and resizing" begin
+    # `LinRange` interpolation is not monotone in floating-point arithmetic
+    for (x, n) ∈ ((bareinterval(1.0, nextfloat(1.0)), 13), (bareinterval(0.1, 0.3), 7),
+                  (bareinterval(-1.0, nextfloat(-1.0, 3)), 11))
+        v = mince(x, n)
+        @test length(v) == n
+        @test all(p -> inf(p) ≤ sup(p), v)
+        @test inf(first(v)) == inf(x)
+        @test sup(last(v)) == sup(x)
+        @test all(k -> sup(v[k]) == inf(v[k+1]), 1:n-1)
+        @test issubset_interval(x, reduce(hull, v))
+    end
+    d = mince(interval(1.0, nextfloat(1.0)), 13)
+    @test all(p -> diam(p) ≥ 0, d)
+    @test all(p -> decoration(p) === com, d)
+
+    # the scalar methods resize the output, matching the vector method contract
+    v = Vector{BareInterval{Float64}}(undef, 2)
+    @test mince!(v, bareinterval(0, 1), 8) === v
+    @test length(v) == 8
+    @test all(isequal_interval.(v, mince(bareinterval(0, 1), 8)))
+    w = Vector{Interval{Float64}}(undef, 5)
+    @test mince!(w, interval(0, 1), 2) === w
+    @test length(w) == 2
+    @test all(isequal_interval.(w, [interval(0, 0.5), interval(0.5, 1)]))
+end
+
 @testset "mince!" begin
     v = Vector{BareInterval{Float64}}(undef, 3)
     @test mince!(v, bareinterval(0, 1), 3) === v

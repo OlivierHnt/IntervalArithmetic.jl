@@ -43,6 +43,22 @@ end
     @test leftof(0.0, (1, :open))
     @test !leftof(2.0, (1, :closed))
 
+    # two lower bounds: at equal values the open bound is positioned after the closed one
+    @test rightof((0, :open), (0, :closed))
+    @test !rightof((0, :closed), (0, :open))
+    @test !rightof((0, :closed), (0, :closed))
+    @test !rightof((0, :open), (0, :open))
+    @test rightof((1, :closed), (0, :open))
+    @test !rightof((0, :open), (1, :closed))
+
+    # two upper bounds: at equal values the open bound is positioned before the closed one
+    @test leftof((0, :open), (0, :closed))
+    @test !leftof((0, :closed), (0, :open))
+    @test !leftof((0, :closed), (0, :closed))
+    @test !leftof((0, :open), (0, :open))
+    @test leftof((0, :closed), (1, :open))
+    @test !leftof((1, :open), (0, :closed))
+
     d1 = Domain{:open,:closed}(0, 1)
     d2 = Domain{:open,:open}(0, 1)
     d3 = Domain{:open,:closed}(1, 2)
