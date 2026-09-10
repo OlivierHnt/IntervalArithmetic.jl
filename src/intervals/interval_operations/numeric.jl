@@ -78,12 +78,25 @@ end
 
 bounds(x::Real) = bounds(interval(x))
 
+# analogues of `nextfloat(typemin(T))` and `prevfloat(typemax(T))` for
+# `Rational` bounds (cf. Section 12.12.8); unbounded integer types such as
+# `BigInt` have no smallest or largest finite value
+_finitemin(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemin(T))
+_finitemax(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemax(T))
+_finitemin(::Type{Rational{BigInt}}) =
+    throw(ArgumentError("cannot compute the midpoint of unbounded intervals with `Rational{BigInt}` bounds; there is no smallest finite `Rational{BigInt}`"))
+_finitemax(::Type{Rational{BigInt}}) =
+    throw(ArgumentError("cannot compute the midpoint of unbounded intervals with `Rational{BigInt}` bounds; there is no largest finite `Rational{BigInt}`"))
+
 """
     mid(x, α = 0.5)
 
 Relative midpoint of `x`, for `α` between 0 and 1 such that `mid(x, 0)` is the
 lower bound of the interval, `mid(x, 1)` its upper bound, and `mid(x, 0.5)` its
-midpoint.
+midpoint. For an unbounded interval, the finite bound is returned whenever `α`
+selects its side, and the infinite bound is replaced by the largest finite
+value of the bound type otherwise (cf. Section 12.12.8 of the IEEE Standard
+1788-2015).
 
 Implement the `mid` function of the IEEE Standard 1788-2015 (Table 9.2).
 
@@ -99,8 +112,14 @@ function mid(x::BareInterval{T}, α = 0.5) where {T<:AbstractFloat}
         return nextfloat(typemin(T))
     else
         lo, hi = bounds(x)
-        lo == typemin(T) && return nextfloat(lo) # cf. Section 12.12.8
-        hi == typemax(T) && return prevfloat(hi) # cf. Section 12.12.8
+        if lo == typemin(T) # cf. Section 12.12.8
+            α > 0.5 && return _normalisezero(hi)
+            return nextfloat(lo)
+        end
+        if hi == typemax(T) # cf. Section 12.12.8
+            α < 0.5 && return _normalisezero(lo)
+            return prevfloat(hi)
+        end
         β = convert(T, α)
         midpoint = β * (hi + lo * (1/β - 1)) # exactly 0.5 * (hi + lo) for β = 0.5
         midpoint = ifelse(isfinite(midpoint), midpoint, (1 - β) * lo + β * hi)
@@ -114,12 +133,18 @@ function mid(x::BareInterval{Rational{T}}, α = 1//2) where {T<:Integer}
     isempty_interval(x) && return throw(ArgumentError("cannot compute the midpoint of empty intervals; cannot return a `Rational` NaN"))
     if isentire_interval(x)
         α == 0.5 && return zero(Rational{T})
-        α > 0.5 && return convert(Rational{T}, typemax(T))
-        return convert(Rational{T}, typemin(T))
+        α > 0.5 && return _finitemax(Rational{T})
+        return _finitemin(Rational{T})
     else
         lo, hi = bounds(x)
-        lo == typemin(Rational{T}) && return convert(Rational{T}, typemin(T)) # cf. Section 12.12.8
-        hi == typemax(Rational{T}) && return convert(Rational{T}, typemax(T)) # cf. Section 12.12.8
+        if lo == typemin(Rational{T}) # cf. Section 12.12.8
+            α > 0.5 && return _normalisezero(hi)
+            return _finitemin(Rational{T})
+        end
+        if hi == typemax(Rational{T}) # cf. Section 12.12.8
+            α < 0.5 && return _normalisezero(lo)
+            return _finitemax(Rational{T})
+        end
         β = convert(Rational{T}, α)
         return _normalisezero((1 - β) * lo + β * hi)
     end
@@ -215,7 +240,7 @@ See also: [`inf`](@ref), [`sup`](@ref), [`bounds`](@ref), [`mid`](@ref),
 """
 function midradius(x::BareInterval)
     m = mid(x)
-    return m, max(m - inf(x), sup(x) - m)
+    return m, max(_fround(-, m, inf(x), RoundUp), _fround(-, sup(x), m, RoundUp)) # cf. Section 12.12.8
 end
 function midradius(x::BareInterval{<:Rational}) # needed to avoid integer overflow error
     m = mid(x)
@@ -263,7 +288,11 @@ function mag(x::Interval{<:Rational})
 end
 
 mag(x::Real) = mag(interval(x))
-mag(x::Complex) = sup(abs(interval(x)))
+function mag(x::Complex)
+    z = interval(x)
+    isempty_interval(z) && return mag(emptyinterval(real(z)))
+    return sup(abs(z))
+end
 
 """
     mig(x)
@@ -295,20 +324,26 @@ function mig(x::Interval{<:Rational})
 end
 
 mig(x::Real) = mig(interval(x))
-mig(x::Complex) = inf(abs(interval(x)))
+function mig(x::Complex)
+    z = interval(x)
+    isempty_interval(z) && return mig(emptyinterval(real(z)))
+    return inf(abs(z))
+end
 
 """
     dist(x, y)
 
-Distance between `x` and `y`.
+Upper bound of the Hausdorff distance between `x` and `y`: the bound
+differences are rounded upward, and equal bounds, including infinite ones, are
+at distance zero.
 """
 function dist(x::BareInterval{T}, y::BareInterval{T}) where {T<:AbstractFloat}
     isempty_interval(x) | isempty_interval(y) && return convert(T, NaN)
-    return max(abs(inf(x) - inf(y)), abs(sup(x) - sup(y)))
+    return max(_dist(inf(x), inf(y)), _dist(sup(x), sup(y)))
 end
 function dist(x::BareInterval{T}, y::BareInterval{T}) where {T<:Rational}
     isempty_interval(x) | isempty_interval(y) && return throw(ArgumentError("cannot compute the distance of empty intervals; cannot return a `Rational` NaN"))
-    return max(abs(inf(x) - inf(y)), abs(sup(x) - sup(y)))
+    return max(_dist(inf(x), inf(y)), _dist(sup(x), sup(y)))
 end
 dist(x::BareInterval, y::BareInterval) = dist(promote(x, y)...)
 
@@ -321,3 +356,11 @@ function dist(x::Interval{T}, y::Interval{T}) where {T<:Rational}
     return dist(bareinterval(x), bareinterval(y))
 end
 dist(x::Interval, y::Interval) = dist(promote(x, y)...)
+
+# used internally, upper bound of `abs(a - b)` with equal, possibly infinite,
+# bounds at distance zero
+function _dist(a::T, b::T) where {T<:NumTypes}
+    a == b && return zero(T)
+    isinf(a) & isinf(b) && return typemax(T) # opposite infinities
+    return _fround(-, max(a, b), min(a, b), RoundUp)
+end

@@ -5,7 +5,7 @@
     emptyinterval(T=[default_numtype()])
 
 Create an empty interval. This interval is an exception to the fact that the
-lower bound is larger than the upper one.
+lower bound is smaller than or equal to the upper one.
 
 Implement the `empty` function of the IEEE Standard 1788-2015 (Section 10.5.2).
 """
