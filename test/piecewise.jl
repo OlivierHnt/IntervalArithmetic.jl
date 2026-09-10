@@ -110,26 +110,34 @@ end
     @test isempty_domain(Domain())
 end
 
-@testset "Constant" begin
-    c = Constant(1.2)
-    @test c isa Constant{Float64}
-    @test c.value == 1.2
+@testset "constant pieces" begin
+    # `Constant` has been removed; `@exact Returns(value)` is the replacement
+    @test !isdefined(IntervalArithmetic, :Constant)
 
-    @test c(22.2) === 1.2
-    @test c(3) === 1.2
-    @test_throws MethodError c("some string")
+    c = @exact Returns(1.2)
+    @test c isa Returns{ExactReal{Float64}}
+    @test c(22.2) === exact(1.2)
+    @test c(interval(0, 1.3)) === exact(1.2)
 
-    @test isguaranteed(c(convert(Interval{Float64}, 1)))
+    d1 = Domain{:closed,:closed}(0, 1)
+    d2 = Domain{:open,:closed}(1, 2)
 
-    x = c(interval(0, 1.3))
+    # `@exact Returns` wraps the value into an interval, preserving the guarantee
+    pexact = Piecewise(d1 => (@exact Returns(1.2)), d2 => identity)
+    x = pexact(interval(0.2, 0.8))
     @test x isa Interval{Float64}
     @test isequal_interval(x, interval(1.2))
     @test decoration(x) === com && isguaranteed(x)
+    @test pexact(0.5) === exact(1.2)
 
-    @test c(interval(Float32, 0, 1)) isa Interval{Float64}
+    # plain `Returns` shortcircuits the propagation and loses the guarantee
+    pplain = Piecewise(d1 => Returns(1.2), d2 => identity)
+    y = pplain(interval(0.2, 0.8))
+    @test isequal_interval(y, interval(1.2))
+    @test decoration(y) === com
+    @test !isguaranteed(y)
 
     @test Returns(1.2)(interval(0, 1)) === 1.2
-    @test Constant(1.2)(interval(0, 1)) isa Interval
 end
 
 @testset "Piecewise construction" begin
@@ -137,16 +145,16 @@ end
     d2 = Domain{:open,:closed}(1, 2)
     d3 = Domain{:closed,:closed}(1, 2)
 
-    p = Piecewise(d1 => Constant(1.0), d2 => identity)
+    p = Piecewise(d1 => (@exact Returns(1.0)), d2 => identity)
     @test p isa Piecewise{2,1}
     @test p.continuity == (-1,)
     @test p.singularities == sup.(domains(p)[1:end-1]) == (1,)
 
-    p2 = Piecewise(d1 => Constant(1.0), d2 => identity; continuity = [0])
+    p2 = Piecewise(d1 => (@exact Returns(1.0)), d2 => identity; continuity = [0])
     @test p2.continuity == (0,)
 
-    @test_throws ArgumentError Piecewise(d2 => Constant(0), d1 => Constant(1))
-    @test_throws ArgumentError Piecewise(d1 => Constant(0), d3 => Constant(1))
+    @test_throws ArgumentError Piecewise(d2 => (@exact Returns(0)), d1 => (@exact Returns(1)))
+    @test_throws ArgumentError Piecewise(d1 => (@exact Returns(0)), d3 => (@exact Returns(1)))
 
     @test_throws MethodError Piecewise(
         (Domain{:closed,:closed}(1, 2), Domain{:open,:open}(2, 3)),
@@ -169,13 +177,13 @@ end
 @testset "domains, pieces and discontinuities" begin
     d1 = Domain{:closed,:closed}(0, 1)
     d2 = Domain{:open,:closed}(1, 2)
-    p = Piecewise(d1 => Constant(1.0), d2 => identity)
-    p2 = Piecewise(d1 => Constant(1.0), d2 => identity; continuity = [0])
+    p = Piecewise(d1 => (@exact Returns(1.0)), d2 => identity)
+    p2 = Piecewise(d1 => (@exact Returns(1.0)), d2 => identity; continuity = [0])
 
     @test domains(p) === p.domains == (d1, d2)
     ps = collect(pieces(p))
     @test length(ps) == 2
-    @test ps[1] == (d1, Constant(1.0)) && ps[2] == (d2, identity)
+    @test ps[1] == (d1, (@exact Returns(1.0))) && ps[2] == (d2, identity)
 
     @test discontinuities(p) == [1]
     @test discontinuities(p, 1) == [1]
@@ -188,15 +196,15 @@ end
     @test domain_string(Domain{:open,:closed}(-Inf, 0)) == "(-Inf, 0]"
     @test domain_string(Domain{:closed,:open}(0, 1)) == "[0, 1)"
 
-    p = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:open,:closed}(1, 2) => identity)
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:open,:closed}(1, 2) => identity)
     @test domain_string(p) == "[0, 1] ∪ (1, 2]"
     @test sprint(show, MIME("text/plain"), p) ==
-        "Piecewise function with 2 pieces:\n  [0, 1] -> Constant{Float64}(1.0)\n  (1, 2] -> identity"
+        "Piecewise function with 2 pieces:\n  [0, 1] -> $(repr(@exact Returns(1.0)))\n  (1, 2] -> identity"
 end
 
 @testset "overlap_domain and in_domain on Piecewise" begin
-    p = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:open,:closed}(1, 2) => identity)
-    pgap = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:closed,:closed}(2, 3) => Constant(2.0))
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:open,:closed}(1, 2) => identity)
+    pgap = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:closed,:closed}(2, 3) => (@exact Returns(2.0)))
 
     @test overlap_domain(Domain(interval(0.5, 0.6)), pgap)
     @test overlap_domain(Domain(interval(2.5, 2.6)), pgap)
@@ -238,7 +246,7 @@ end
     @test isequal_interval(myabs(interval(-10, -1)), interval(1, 10))
     @test decoration(myabs(interval(-10, -1))) === com
 
-    p = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:open,:closed}(1, 2) => identity)
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:open,:closed}(1, 2) => identity)
     @test isempty_interval(p(interval(3, 4)))
     @test decoration(p(interval(3, 4))) === trv
 
@@ -271,7 +279,7 @@ end
     @test decoration(myabs0(interval(-11, 11))) === com
     @test decoration(myabs0(interval(-11, 11, def))) === def
 
-    pgap = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:closed,:closed}(2, 3) => Constant(2.0))
+    pgap = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:closed,:closed}(2, 3) => (@exact Returns(2.0)))
     x = pgap(interval(0.5, 2.5))
     @test isequal_interval(x, interval(1, 2)) && decoration(x) === trv
 end
@@ -286,7 +294,7 @@ end
     @test myabs(3.0) == 3.0
     @test myabs(0.0) === -0.0
 
-    p = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:open,:closed}(1, 2) => identity)
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:open,:closed}(1, 2) => identity)
     err = try p(5.0) catch e; e end
     @test err isa DomainError
     @test err.msg == "piecewise function was called outside of its domain [0, 1] ∪ (1, 2]"
@@ -294,8 +302,8 @@ end
 
 @testset "Step function" begin
     step = Piecewise(
-        Domain{:open,:closed}(-Inf, 0) => Constant(0),
-        Domain{:open,:open}(0, 1000) => Constant(1)
+        Domain{:open,:closed}(-Inf, 0) => (@exact Returns(0)),
+        Domain{:open,:open}(0, 1000) => (@exact Returns(1))
     )
 
     @test step(-1) == 0
@@ -343,9 +351,9 @@ end
 
 @testset "Singularities" begin
     f = Piecewise(
-        Domain{:open,:closed}(0, 1) => Constant(0),
+        Domain{:open,:closed}(0, 1) => (@exact Returns(0)),
         Domain{:open,:closed}(1, 2) => x -> 0.5x,
-        Domain{:open,:closed}(2, 3) => Constant(1),
+        Domain{:open,:closed}(2, 3) => (@exact Returns(1)),
         Domain{:open,:open}(3, 4) => x -> (x-3)^2 + 1;
         continuity = [-1, 0, 1]
     )

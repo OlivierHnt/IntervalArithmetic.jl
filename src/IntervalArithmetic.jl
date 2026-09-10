@@ -66,7 +66,7 @@ const RealIntervalType{T} = Union{BareInterval{T},Interval{T}}
 #
 
 include("piecewise.jl")
-    export Domain, Constant, Piecewise, domains, discontinuities, pieces
+    export Domain, Piecewise, domains, discontinuities, pieces
 
 #
 

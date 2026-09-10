@@ -66,44 +66,14 @@ function intersect_domain(d1::Domain, d2::Domain)
 end
 
 """
-    Constant(value)
-
-Constant function compatible with interval arithmetic: it wraps `value` into
-an interval for an interval input, and returns `value` itself otherwise. In
-contrast, `Returns(value)` from Base outputs `value` even for an interval
-input, which shortcircuits the propagation of intervals and loses the
-associated guarantee of correctness.
-
-```jldoctest
-julia> using IntervalArithmetic
-
-julia> setdisplay(:full);
-
-julia> c = Constant(1.2)
-Constant{Float64}(1.2)
-
-julia> c(22.2)
-1.2
-
-julia> c(interval(0, 1.3))
-Interval{Float64}(1.2, 1.2, com, true)
-```
-"""
-struct Constant{T}
-    value :: T
-end
-
-(constant::Constant)(::Interval) = interval(constant.value)
-
-(constant::Constant)(::Real) = constant.value
-
-"""
     Piecewise(pairs::Pair...; continuity = ntuple(i -> -1, length(pairs) - 1))
 
 Function defined by pieces, each pair mapping a [`Domain`](@ref) to a function.
 Support both real and interval inputs. The domains must be ordered and
-pairwise disjoint. For constant pieces, use [`Constant`](@ref) to preserve the
-guarantee of correctness of interval inputs.
+pairwise disjoint. For a constant piece, use `@exact Returns(value)`, which
+wraps `value` into an interval and preserves the guarantee of correctness;
+plain `Returns(value)` from Base returns `value` itself for an interval input,
+which shortcircuits the propagation of intervals and loses that guarantee.
 
 The `k`-th element of `continuity` gives the regularity of the function at the
 junction between the `k`-th and `(k+1)`-th domains:

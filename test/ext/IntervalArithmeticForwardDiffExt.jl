@@ -183,12 +183,29 @@ end
     @test isguaranteed(ForwardDiff.derivative(g, interval(1)))
 end
 
-@testset "Constant on Dual" begin
-    c = Constant(1.2)
-    @test c(Dual{Nothing}(interval(2.0), interval(1.0))) === Dual{Nothing}(interval(1.2), interval(0.0))
-    @test c(Dual{Nothing}(interval(Float32, 2.0), interval(Float32, 1.0))) isa Dual{Nothing,Interval{Float32},1}
-    @test isequal_interval(ForwardDiff.derivative(c, interval(2.0)), interval(0.0))
-    @test npartials(c(Dual{Nothing}(interval(2.0), interval(1.0), interval(3.0)))) == 1
+@testset "constant piece on Dual" begin
+    # `@exact Returns(value)` returns a real, which the `Piecewise` `Dual` method
+    # normalises to that value with vanishing partials
+    c = @exact Returns(1.2)
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => c, Domain{:open,:closed}(1, 2) => identity)
+
+    d = p(Dual{Nothing}(interval(0.2, 0.8), interval(1.0)))
+    @test d isa Dual{Nothing,Interval{Float64},1}
+    @test isequal_interval(value(d), interval(1.2))
+    @test decoration(value(d)) === com && isguaranteed(value(d))
+    @test isthinzero(partials(d, 1))
+
+    @test isequal_interval(ForwardDiff.derivative(p, interval(0.2, 0.8)), interval(0.0))
+    @test isguaranteed(ForwardDiff.derivative(p, interval(0.2, 0.8)))
+
+    # spanning the junction: the constant and identity pieces are hulled
+    dspan = ForwardDiff.derivative(p, interval(0.5, 1.5))
+    @test isequal_interval(dspan, interval(0, 1))
+    @test decoration(dspan) === def
+
+    p32 = Piecewise(Domain{:closed,:closed}(0, 1) => c, Domain{:open,:closed}(1, 2) => identity)
+    @test p32(Dual{Nothing}(interval(Float32, 0.2, 0.8), interval(Float32, 1.0))) isa Dual{Nothing,Interval{Float32},1}
+    @test npartials(p(Dual{Nothing}(interval(0.2, 0.8), interval(1.0), interval(3.0)))) == 2
 end
 
 @testset "Piecewise on Dual" begin
@@ -207,7 +224,7 @@ end
     @test length(g) == 2
     @test isequal_interval(g[1], interval(1)) & isequal_interval(g[2], interval(1))
 
-    p = Piecewise(Domain{:closed,:closed}(0, 1) => Constant(1.0), Domain{:open,:closed}(1, 2) => identity)
+    p = Piecewise(Domain{:closed,:closed}(0, 1) => (@exact Returns(1.0)), Domain{:open,:closed}(1, 2) => identity)
     d = p(Dual{Nothing}(interval(-1.0, 0.5), interval(1.0)))
     @test isequal_interval(value(d), interval(1))
     @test decoration(value(d)) === trv
@@ -221,7 +238,7 @@ end
     slide = Piecewise(
         Domain{:open,:closed}(-Inf, -1) => x -> -2x - 1,
         Domain{:open,:closed}(-1, 0) => x -> x^2,
-        Domain{:open,:open}(0, Inf) => Constant(0);
+        Domain{:open,:open}(0, Inf) => (@exact Returns(0));
         continuity = [1, 1]
     )
 
@@ -259,9 +276,9 @@ end
 
 @testset "Piecewise singularities" begin
     f = Piecewise(
-        Domain{:open,:closed}(0, 1) => Constant(0),
+        Domain{:open,:closed}(0, 1) => (@exact Returns(0)),
         Domain{:open,:closed}(1, 2) => x -> 0.5x,
-        Domain{:open,:closed}(2, 3) => Constant(1),
+        Domain{:open,:closed}(2, 3) => (@exact Returns(1)),
         Domain{:open,:open}(3, 4) => x -> (x-3)^2 + 1;
         continuity = [-1, 0, 1]
     )

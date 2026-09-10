@@ -19,7 +19,7 @@ end
 
 @testset "Exports" begin
     expected = [Symbol("@I_str"), Symbol("@exact"), Symbol("@interval"), :BareInterval,
-        :ComplexI, :Constant, :Decoration, :Domain, :ExactReal, :Interval,
+        :ComplexI, :Decoration, :Domain, :ExactReal, :Interval,
         :IntervalArithmetic, :Overlap, :Piecewise, :RealIntervalType, :RealOrComplexI,
         :bareinterval, :bisect, :bounds, :cancelminus, :cancelplus, :com, :dac,
         :decoration, :def, :diam, :discontinuities, :dist, :domains, :emptyinterval,
