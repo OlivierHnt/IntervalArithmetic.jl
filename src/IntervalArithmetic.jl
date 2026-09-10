@@ -66,7 +66,7 @@ const RealIntervalType{T} = Union{BareInterval{T},Interval{T}}
 #
 
 include("piecewise.jl")
-    export Domain, Constant, Piecewise, domains, discontinuities, pieces
+    export Domain, Piecewise, domains, discontinuities, pieces
 
 #
 
@@ -267,9 +267,9 @@ Random.rand(rng::Random.AbstractRNG, ::Random.SamplerType{Interval{T}}) where {T
 
 sample(x::Interval) = sample(Random.default_rng(), x)
 
-function sample(rng::Random.AbstractRNG, x::Interval{T}) where {T<:NumTypes}
+function sample(rng::Random.AbstractRNG, x::Interval{T}) where {T<:AbstractFloat}
     lo, hi = bounds(x)
-    β = rand(rng, float(T))
+    β = rand(rng, T)
     lo = ifelse(lo == typemin(T), _value_min(T), lo)
     hi = ifelse(hi == typemax(T), _value_max(T), hi)
     val = convert(T, (1 - β) * lo + β * hi)
@@ -280,9 +280,6 @@ end
 
 _value_min(::Type{T}) where {T<:AbstractFloat} = floatmin(T)
 _value_max(::Type{T}) where {T<:AbstractFloat} = floatmax(T)
-
-_value_min(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemin(T))
-_value_max(::Type{Rational{T}}) where {T<:Integer} = convert(Rational{T}, typemax(T))
 
     export sample
 

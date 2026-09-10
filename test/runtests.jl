@@ -1,45 +1,37 @@
 using Test
 
-using ForwardDiff
 using IntervalArithmetic
-using InteractiveUtils
-import Arblib
-import IntervalSets as IS
 
-include("generate_ITF1788.jl")
-
-# interval tests
-for f ∈ filter(isfile, readdir("interval_tests"; join = true))
+# mirrors the organization of src/ and ext/
+not_repo_tests = ("runtests.jl", "aqua.jl", "generate_ITF1788.jl", "ITF1788_tests", "itl", "supposition")
+repo_tests = String[]
+for (root, dirs, files) ∈ walkdir(@__DIR__)
+    filter!(∉(not_repo_tests), dirs)
+    for f ∈ files
+        endswith(f, ".jl") && f ∉ not_repo_tests && push!(repo_tests, relpath(joinpath(root, f), @__DIR__))
+    end
+end
+for f ∈ sort!(repo_tests)
     @testset "$f" begin
         include(f)
     end
 end
 
-# interval tests using Supposition
-# We use Pkg.add to add a specific version of Supposition
 using Pkg
 Pkg.add(url = "https://github.com/Seelengrab/Supposition.jl.git", rev = "feat/support_x86")
-using Supposition, Supposition.Data
-
-for f ∈ filter(isfile, readdir("interval_tests/supposition"; join = true))
+for f ∈ filter(isfile, readdir("supposition"; join = true))
     @testset "$f" begin
         include(f)
     end
 end
 Pkg.rm("Supposition")
 
-# ITF1788 tests
-# these tests were generated using:
-# for f ∈ readdir("itl")
-#     if !occursin("LICENSE", f)
-#         generate(f)
-#     end
-# end
+# generated via `generate(f)` for each file f of itl/ (except LICENSE.md)
+include("generate_ITF1788.jl")
 for f ∈ readdir("ITF1788_tests"; join = true)
     @testset "$f" begin
         include(f)
     end
 end
 
-# Aqua tests
 include("aqua.jl")

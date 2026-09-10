@@ -1,139 +1,91 @@
 """
-    Domain{LeftBound, RightBound}(lo, hi)
+    Domain{L,R}(lo, hi)
 
-The domain of a function.
-
-`LeftBound` and `RightBound` must be symbols and are either `:closed` or
-`:open` determining if the corresponding endpoint is (respectively)
-included or not in the domain.
-
-If `hi > lo`, the domain is considered to be empty.
+Domain of a real function. The type parameters `L` and `R` must be `:open` or
+`:closed`, and determine whether the corresponding endpoint belongs to the
+domain. A domain is empty whenever `hi < lo`, or `hi == lo` with an open
+endpoint.
 """
-struct Domain{L, R, T, S}
-    lo::T
-    hi::S
+struct Domain{L,R,T,S}
+    lo :: T
+    hi :: S
 
-    function Domain{L, R, T, S}(lo::T, hi::S) where {L, R, T, S}
-        (!(L ∈ (:open, :closed)) || !(R ∈ (:open, :closed))) && throw(ErrorException(
-            "Domain bound must be either :open or :closed, got $L and $R instead"
-        ))
-        return new{L, R, T, S}(lo, hi)
+    function Domain{L,R,T,S}(lo::T, hi::S) where {L,R,T,S}
+        (L ∈ (:open, :closed) && R ∈ (:open, :closed)) ||
+            return throw(ArgumentError("Domain bound must be either :open or :closed, got $L and $R instead"))
+        return new{L,R,T,S}(lo, hi)
     end
 end
 
-Domain{L, R}(lo::T, hi::S) where {T, S, L, R} = Domain{L, R, T, S}(lo, hi)
-Domain(lo::Tuple, hi::Tuple) = Domain{lo[2], hi[2]}(lo[1], hi[1])
-Domain(X::Interval) = Domain{:closed, :closed}(inf(X), sup(X))
-Domain() = Domain{:open, :open}(Inf, -Inf)
+Domain{L,R}(lo::T, hi::S) where {L,R,T,S} = Domain{L,R,T,S}(lo, hi)
+Domain((lo, L)::Tuple, (hi, R)::Tuple) = Domain{L,R}(lo, hi)
+Domain(x::Interval) = Domain{:closed,:closed}(inf(x), sup(x))
+Domain() = Domain{:open,:open}(Inf, -Inf)
 
-lowerbound(x::Domain{L, R}) where {L, R} = (x.lo, L)
-upperbound(x::Domain{L, R}) where {L, R} = (x.hi, R)
+lowerbound(d::Domain{L,R}) where {L,R} = (d.lo, L)
+upperbound(d::Domain{L,R}) where {L,R} = (d.hi, R)
 
-inf(x::Domain) = x.lo
-sup(x::Domain) = x.hi
+inf(d::Domain) = d.lo
+sup(d::Domain) = d.hi
 
-"""
-    rightof(val, lowerbound)
+rightof(x::Real, (val, bound)::Tuple) = ifelse(bound === :closed, val ≤ x, val < x)
 
-Determine if a value is on the right of a lower bound.
-"""
-function rightof(x::Real, (val, bound))
-    bound == :closed && return val <= x
-    return val < x
+# for two lower bounds: at equal values an open bound is positioned after a closed one
+function rightof((val1, bound1)::Tuple, (val2, bound2)::Tuple)
+    val1 == val2 && return bound1 === :open && bound2 === :closed
+    return val1 > val2
 end
 
-function rightof((val1, bound1), (val2, bound2))
-    if val1 < val2 || (val1 == val2 && bound1 == bound2 == :closed)
-        return false
-    end
+leftof(x::Real, (val, bound)::Tuple) = ifelse(bound === :closed, x ≤ val, x < val)
 
-    return true
-end
-
-"""
-    leftof(val, upperbound)
-
-Determine if a value is on the left of an upper bound.
-"""
-function leftof(x::Real, (val, bound))
-    bound == :closed && return x <= val
-    return x < val
-end
-
-function leftof((val1, bound1), (val2, bound2))
-    if val2 < val1 || (val1 == val2 && bound1 == bound2 == :closed)
-        return false
-    end
-
-    return true
+# for two upper bounds: at equal values an open bound is positioned before a closed one
+function leftof((val1, bound1)::Tuple, (val2, bound2)::Tuple)
+    val1 == val2 && return bound1 === :open && bound2 === :closed
+    return val1 < val2
 end
 
 function leftof(d1::Domain, d2::Domain)
     val1, bound1 = upperbound(d1)
     val2, bound2 = lowerbound(d2)
-
-    val1 == val2 && return !(bound1 == bound2 == :closed)
+    val1 == val2 && return !(bound1 === bound2 === :closed)
     return val1 < val2
 end
 
 in_domain(x::Real, domain::Domain) = rightof(x, lowerbound(domain)) && leftof(x, upperbound(domain))
 
+function isempty_domain(d::Domain{L,R}) where {L,R}
+    d.lo == d.hi && return !(L === R === :closed)
+    return d.hi < d.lo
+end
+
 function intersect_domain(d1::Domain, d2::Domain)
-    left = max(lowerbound(d1), lowerbound(d2))
-    right = min(upperbound(d1), upperbound(d2))
-
-    left > right && return Domain()
-    return Domain(left, right)
-end
-
-function isempty_domain(domain::Domain)
-    lo, lobound = lowerbound(domain)
-    hi, hibound = upperbound(domain)
-
-    lo == hi && return !(lobound == hibound == :closed)
-    return lo > hi
+    lo, L = ifelse(rightof(lowerbound(d1), lowerbound(d2)), lowerbound(d1), lowerbound(d2))
+    hi, R = ifelse(leftof(upperbound(d1), upperbound(d2)), upperbound(d1), upperbound(d2))
+    d = Domain{L,R}(lo, hi)
+    return isempty_domain(d) ? Domain() : d
 end
 
 """
-    Constant(value)
+    Piecewise(pairs::Pair...; continuity = ntuple(i -> -1, length(pairs) - 1))
 
-A constant function compatible with interval arithmetic.
+Function defined by pieces, each pair mapping a [`Domain`](@ref) to a function.
+Support both real and interval inputs. The domains must be ordered and
+pairwise disjoint. For a constant piece, use `@exact Returns(value)`, which
+wraps `value` into an interval and preserves the guarantee of correctness;
+plain `Returns(value)` from Base returns `value` itself for an interval input,
+which shortcircuits the propagation of intervals and loses that guarantee.
 
-Return an interval containing only the value for an interval input,
-and the value directly otherwise.
+The `k`-th element of `continuity` gives the regularity of the function at the
+junction between the `k`-th and `(k+1)`-th domains:
+- `-1`: discontinuous;
+- `n ≥ 0`: `n` times continuously differentiable; only relevant beyond `0` when
+  differentiating via ForwardDiff.jl.
+It determines the decoration of an interval input spanning a junction; a
+junction with a gap between the domains is always treated as discontinuous.
 
-```jldoctest
-julia> using IntervalArithmetic
-
-julia> setdisplay(:full);
-
-julia> c = Constant(1.2)
-Constant{Float64}(1.2)
-
-julia> c(22.2)
-1.2
-
-julia> c(interval(0, 1.3))
-Interval{Float64}(1.2, 1.2, com, true)
-```
-
-Note that this is not equivalent to `Returns(value)` from base,
-which always outputs `value`, even for an interval input.
-This can shortcircuit the propagation of intervals in the computation
-and lose the associated guarantee of correctness.
-"""
-struct Constant{T}
-    value::T
-end
-
-(constant::Constant)(::Any) = constant.value
-(constant::Constant)(::Interval) = interval(constant.value)
-
-"""
-    Piecewise(pairs... ; continuity = fill(-1, length(pairs) - 1))
-
-A function defined by pieces (each associating a domain to a function).
-Support both intervals and standard numbers.
+An interval input not contained in the union of the domains yields the `trv`
+decoration, and one disjoint from it yields the empty interval. A real input
+outside every domain throws a `DomainError`.
 
 ```jldoctest
 julia> using IntervalArithmetic
@@ -141,8 +93,8 @@ julia> using IntervalArithmetic
 julia> setdisplay(:full);
 
 julia> myabs = Piecewise(
-          Domain{:open, :closed}(-Inf, 0) => x -> -x,
-          Domain{:open, :open}(0, Inf) => identity
+          Domain{:open,:closed}(-Inf, 0) => x -> -x,
+          Domain{:open,:open}(0, Inf) => identity
        );
 
 julia> myabs(-22.3)
@@ -151,171 +103,118 @@ julia> myabs(-22.3)
 julia> myabs(interval(-5, 5))
 Interval{Float64}(0.0, 5.0, def, true)
 ```
-
-For constant pieces, it is recommended to use `Constant`
-for full compatibility with intervals.
-
-The domains must be specified in increasing order and must not overlap.
-
-The `continuity` optional argument takes a vector of `N - 1` integers
-(where  `N` is the number of domains)
-determining how the piecewise function behaves at the endpoints between
-the subdomains.
-The possibility are:
-- `-1` : the function is discontinuous between the domains.
-- `0` : the function is continuous but not differentiable between the domains.
-- `n > 0` : the function is `n` times continuously differentiable between the
-    domains. This only matter when using `ForwardDiff` to compute derivative
-    of the function.
-
-This information is used to determine the decoration of intervals that
-covers the endpoint of several domains.
-
-If an input interval goes outside the domain of definition of the piecewise
-function, the output will always have the trivial (`trv`) decoration.
-For standard number, it throws a `DomainError`.
-
-The piecewise function can have a gap between two pieces.
-In this case, the `continuity` optional argument is ignored,
-and interval spanning over the gap always as the `trv` decoration.
 """
-struct Piecewise{N, M, D<:NTuple{N, Domain}, F<:NTuple{N, Any}, S<:NTuple{M, Real}}
-    domains::D
-    fs::F
-    continuity::NTuple{M, Int}
-    singularities::S
+struct Piecewise{N,M,D<:NTuple{N,Domain},F<:NTuple{N,Any},S<:NTuple{M,Real}}
+    domains       :: D
+    fs            :: F
+    continuity    :: NTuple{M, Int}
+    singularities :: S
 
     function Piecewise(
-            domains::NTuple{N, Domain},
-            fs::NTuple{N, Any},
-            continuity::NTuple{M, Int},
-            singularities::NTuple{M, Real}) where {N, M}
+            domains::NTuple{N,Domain},
+            fs::NTuple{N,Any},
+            continuity::NTuple{M,Int},
+            singularities::NTuple{M,Real}) where {N,M}
 
-        N != M + 1 && throw(ArgumentError(
-                "a Piecewise function with N pieces must have N - 1 singularities. " *
-                "Given: $N pieces and $M singularities."
-        ))
+        N != M+1 && throw(ArgumentError(
+                "a Piecewise function with N pieces must have N - 1 singularities, got $N pieces and $M singularities."))
 
-        return new{N, M, typeof(domains), typeof(fs), typeof(singularities)}(domains, fs, continuity, singularities)
+        return new{N,M,typeof(domains),typeof(fs),typeof(singularities)}(domains, fs, continuity, singularities)
     end
 end
 
 function Piecewise(
-        domains::NTuple{N, Domain},
-        fs::NTuple{N, Any},
-        continuity::NTuple{M, Int} = ntuple(i -> -1, Val(N-1))) where {N, M}
+        domains::NTuple{Nd,Domain},
+        fs::NTuple{Nf,Any},
+        continuity::NTuple{M,Integer} = ntuple(i -> -1, Val(Nd-1))) where {Nd,Nf,M}
 
-    if length(domains) != length(fs)
-        throw(ArgumentError("the number of domains and the number of functions don't match"))
+    Nd != Nf && return throw(ArgumentError("the number of domains and the number of functions don't match"))
+
+    Nd-1 != M  && return throw(ArgumentError("$M junction points but $(Nd - 1) are expected based on the number of domains $Nd"))
+
+    for k ∈ 1:Nd-1
+        leftof(domains[k], domains[k+1]) || return throw(ArgumentError("domains are either not ordered or not disjoint"))
     end
 
-    if length(domains) - 1 != length(continuity)
-        n = length(domains)
-        throw(ArgumentError("$(length(sub)) junction points but $(n - 1) are expected based on the number of domains ($n)"))
-    end
-
-    for k ∈ 1:length(domains) - 1
-        s1 = domains[k]
-        s2 = domains[k + 1]
-
-        if !leftof(s1, s2)
-           throw(ArgumentError("domains are either not ordered or not disjoint"))
-        end
-    end
-
-    singularities = sup.(domains[1:end-1])
-
-    return Piecewise(Tuple(domains), Tuple(fs), Tuple(continuity), Tuple(singularities))
+    return Piecewise(domains, fs, continuity, sup.(domains[1:Nd-1]))
 end
 
-function Piecewise(
-        pairs::Vararg{Pair, N} ;
-        continuity = ntuple(i -> -1, Val(N - 1))) where N
-
-    return Piecewise(first.(pairs), last.(pairs), Tuple(continuity))
-end
+Piecewise(pairs::Vararg{Pair,N}; continuity = ntuple(i -> -1, Val(N-1))) where {N} =
+    Piecewise(first.(pairs), last.(pairs), Tuple(continuity))
 
 domains(piecewise::Piecewise) = piecewise.domains
 pieces(piecewise::Piecewise) = zip(domains(piecewise), piecewise.fs)
 
-function discontinuities(piecewise::Piecewise, order = 0)
-    return [s for (s, C) ∈ zip(piecewise.singularities, piecewise.continuity) if C .< order]
+discontinuities(piecewise::Piecewise, order::Integer = 0) =
+    [s for (s, C) ∈ zip(piecewise.singularities, piecewise.continuity) if C < order]
+
+#
+
+function (piecewise::Piecewise)(x::Real)
+    for (domain, f) ∈ pieces(piecewise)
+        in_domain(x, domain) && return f(x)
+    end
+    return throw(DomainError(x, "piecewise function was called outside of its domain $(domain_string(piecewise))"))
 end
 
-function domain_string(domain::Domain{L, R}) where {L, R}
-    left = (L == :closed) ? "[" : "("
-    right = (R == :closed) ? "]" : ")"
+function (piecewise::Piecewise)(X::Interval{T}) where {T}
+    input_domain = Domain(X)
+    t = isguaranteed(X)
+    overlap_domain(input_domain, piecewise) || return _unsafe_interval(emptyinterval(BareInterval{T}), trv, t)
 
-    return "$left$(domain.lo), $(domain.hi)$right"
+    if !in_domain(input_domain, piecewise)
+        dec = trv
+    elseif any(s -> in_domain(s, input_domain), discontinuities(piecewise))
+        dec = def
+    else
+        dec = com
+    end
+
+    outputs = Interval{T}[]
+    for (piece_domain, f) ∈ pieces(piecewise)
+        piece_input = intersect_domain(input_domain, piece_domain)
+        isempty_domain(piece_input) && continue
+        push!(outputs, f(_unsafe_interval(bareinterval(inf(piece_input), sup(piece_input)), decoration(X), t)))
+    end
+
+    dec = min(dec, minimum(decoration, outputs))
+    return setdecoration(reduce(hull, outputs), dec)
 end
 
-function domain_string(piecewise::Piecewise)
-    join(domain_string.(domains(piecewise)), " ∪ ")
+#
+
+# whether `domain` is contained in the union of the (ordered) domains of `piecewise`
+function in_domain(domain, piecewise)
+    loval, lobound = lowerbound(domain)
+    hival, hibound = upperbound(domain)
+    for piece ∈ domains(piecewise)
+        supval, supbound = upperbound(piece)
+        (supval < loval || (supval == loval && !(lobound === supbound === :closed))) && continue
+        infval, infbound = lowerbound(piece)
+        (infval < loval || (infval == loval && (infbound === :closed || lobound === :open))) || return false
+        (hival < supval || (hival == supval && (supbound === :closed || hibound === :open))) && return true
+        loval, lobound = supval, ifelse(supbound === :closed, :open, :closed)
+    end
+    return false
 end
+
+overlap_domain(domain, piecewise) =
+    any(d -> !isempty_domain(intersect_domain(domain, d)), domains(piecewise))
+
+#
 
 function Base.show(io::IO, ::MIME"text/plain", piecewise::Piecewise)
-    n = length(pieces(piecewise))
-    print(io, "Piecewise function with $n pieces:")
-
+    print(io, "Piecewise function with $(length(domains(piecewise))) pieces:")
     for (domain, f) ∈ pieces(piecewise)
         println(io)
         print(io, "  $(domain_string(domain)) -> $(repr(f))")
     end
 end
 
-function in_domain(domain, piecewise)
-    rightof(upperbound(domain), upperbound(domains(piecewise)[end])) && return false
-
-    # This relies on the fact that domains are ordered
-    lo = lowerbound(domain)
-
-    for domain ∈ domains(piecewise)
-        if !rightof(lo, lowerbound(domain))
-            return false
-        end
-
-        val, bound = upperbound(domain)
-
-        val > upperbound(domain)[1] && break
-
-        if bound == :closed
-            lo = (val, :open)
-        else
-            lo = (val, :closed)
-        end
-    end
-
-    return true
+function domain_string(d::Domain{L,R}) where {L,R}
+    left  = ifelse(L === :closed, '[', '(')
+    right = ifelse(R === :closed, ']', ')')
+    return "$left$(d.lo), $(d.hi)$right"
 end
 
-overlap_domain(domain, piecewise) = any(!isempty_domain, intersect_domain.(Ref(domain), domains(piecewise)))
-
-function (piecewise::Piecewise)(X::Interval{T}) where {T}
-    input_domain = Domain(X)
-    !overlap_domain(input_domain, piecewise) && return emptyinterval(T)
-
-    if !in_domain(input_domain, piecewise)
-        dec = trv
-    elseif any(x -> in_domain(x, input_domain), discontinuities(piecewise))
-        dec = def
-    else
-        dec = com
-    end
-
-    piece_outputs = Interval{T}[]
-    for (piece_domain, f) ∈ pieces(piecewise)
-        piece_input = intersect_domain(input_domain, piece_domain)
-        isempty_domain(piece_input) && continue
-        push!(piece_outputs, f(interval(inf(piece_input), sup(piece_input), decoration(X))))
-    end
-
-    dec = min(dec, minimum(decoration.(piece_outputs)))
-    return IntervalArithmetic.setdecoration(reduce(hull, piece_outputs), dec)
-end
-
-function (piecewise::Piecewise)(x::Real)
-    for (domain, f) ∈ pieces(piecewise)
-        (in_domain(x, domain)) && return f(x)
-    end
-    throw(DomainError(x, "piecewise function was called outside of its domain $(domain_string(piecewise))"))
-end
+domain_string(piecewise::Piecewise) = join(domain_string.(domains(piecewise)), " ∪ ")

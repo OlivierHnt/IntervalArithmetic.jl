@@ -138,15 +138,19 @@ for f ∈ (:cbrt, :exp, :exp2, :exp10, :expm1, # exponential
         end
     end
 
+    # if CRlibm has no routine, dispatch falls back to the shared `:correct` methods above
     if f ∈ CRlibm.functions
         @eval _fround(::typeof($f), ::IntervalRounding{:correct}, x::Float16, r::RoundingMode) = Float16(_fround($f, Float64(x), r), r)
         @eval _fround(::typeof($f), ::IntervalRounding{:correct}, x::Union{Float32,Float64}, r::RoundingMode) = CRlibm.$f(x, r)
     end
 
-    @eval _fround(::typeof($f), ::IntervalRounding{:ulp}, x::Union{Float16,Float32,Float64}, ::RoundingMode{:Down}) = prevfloat(CoreMath.$coremath_f(x))
-    @eval _fround(::typeof($f), ::IntervalRounding{:ulp}, x::Union{Float16,Float32,Float64}, ::RoundingMode{:Up}) = nextfloat(CoreMath.$coremath_f(x))
+    # if CoreMath has no routine, dispatch falls back to the shared `:correct` methods above
+    if f ∈ CoreMath.univariate_functions
+        @eval _fround(::typeof($f), ::IntervalRounding{:ulp}, x::Union{Float16,Float32,Float64}, ::RoundingMode{:Down}) = prevfloat(CoreMath.$coremath_f(x))
+        @eval _fround(::typeof($f), ::IntervalRounding{:ulp}, x::Union{Float16,Float32,Float64}, ::RoundingMode{:Up}) = nextfloat(CoreMath.$coremath_f(x))
+    end
 
-    @eval _fround(::typeof($f), ::IntervalRounding{:none}, x::AbstractFloat, r::RoundingMode) = $f(x)
+    @eval _fround(::typeof($f), ::IntervalRounding{:none}, x::AbstractFloat, ::RoundingMode) = $f(x)
 end
 
 # 2-argument functions

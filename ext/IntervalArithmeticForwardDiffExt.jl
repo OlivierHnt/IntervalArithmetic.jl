@@ -124,9 +124,11 @@ end
 
 # Piecewise functions
 
-function (constant::Constant)(::Dual{T,Interval{S}}) where {T, S}
-    return Dual{T}(interval(S, constant.value), interval(S, 0.0))
-end
+# a constant piece (e.g. `@exact Returns(value)`) returns a real instead of a `Dual`,
+# which is the same value with vanishing partials
+_piece_dual(out::Dual, ::Dual{T,Interval{S}}) where {T,S} = out
+_piece_dual(out::Real, dual::Dual{T,Interval{S}}) where {T,S} =
+    Dual{T}(interval(S, out), zero(partials(dual)))
 
 function (piecewise::Piecewise)(dual::Dual{T,<:Interval}) where {T}
     X = value(dual)
@@ -149,7 +151,7 @@ function (piecewise::Piecewise)(dual::Dual{T,<:Interval}) where {T}
         isempty_domain(piece_input) && continue
         sub_X = interval(inf(piece_input), sup(piece_input), decoration(X))
         sub_dual = Dual{T}(sub_X, partials(dual))
-        push!(dual_piece_outputs, f(sub_dual))
+        push!(dual_piece_outputs, _piece_dual(f(sub_dual), sub_dual))
     end
 
     piece_outputs = value.(dual_piece_outputs)

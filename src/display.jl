@@ -328,8 +328,11 @@ function _round_string(x::AbstractFloat, sigdigits::Int)
     return str
 end
 
-_round_string(x::AbstractFloat, sigdigits::Int, mode::RoundingMode) =
-    _round_string(round(x, mode; sigdigits = sigdigits), sigdigits)
+# print as Julia Base whenever the shortest representation fits within `sigdigits`
+function _round_string(x::AbstractFloat, sigdigits::Int, mode::RoundingMode)
+    _count_sigdigits(string(x)) ≤ sigdigits && return _round_string(x, sigdigits)
+    return _round_string(round(x, mode; sigdigits = sigdigits), sigdigits)
+end
 
 _count_sigdigits(s::AbstractString) = length(replace(split(s, r"[eE]")[1], '-' => "", '.' => "", r"^0+" => ""))
 
